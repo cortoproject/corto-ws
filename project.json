@@ -1,0 +1,7 @@
+{
+    "id": "corto/ws",
+    "type": "package",
+    "value": {
+        "dependencies": ["corto/web/server"]
+    }
+}

@@ -1,0 +1,78 @@
+#package corto/ws
+#import corto/web/server
+
+// Setup new connection (client -> server)
+struct connect::
+  session: string
+  version: string
+
+// Connection established (server -> client)
+struct connected::
+  session: string
+
+// Connection failed (server -> client)
+struct failed::
+  version: string
+
+// Subscribe for data (client -> server)
+struct sub::
+  id: string
+  parent: string
+  expr: string
+  type: string
+  offset: uint64
+  limit: uint64
+
+// Unsubscribe for data (client -> server)
+struct unsub::
+  id: string
+
+// Data message (server -> client)
+struct dataMember::
+  name: string
+  type: lang/type
+
+struct dataObject::
+  id: string
+  parent: string, optional
+  owner: string, optional
+  value: list{verbatim{"text/json"}}, optional
+  leaf: bool, optional
+
+struct dataElement::
+  type: string
+  kind: string, optional
+  members: list{dataMember}, optional
+  constants: list{string}, optional
+  update: list{dataObject}, optional
+  delete: list{dataObject}, optional
+
+struct data::
+  sub: string
+  data: list{dataElement}
+
+
+// WS Server
+container Server: SockJs, implements={dispatcher}::
+  
+  void post(event e) // Post event to event queue
+  void onPoll() override // Read events from event queue
+  void onData(HTTP/Connection c, string msg) override // Receive data
+  void onClose(HTTP/Connection c) override // Connection closed
+
+  events: list{event}, private|local // Event queue
+
+  // Server sessions
+  table Session::
+    id: string, key // Session id
+
+    // Private members
+    conn: HTTP/Connection, private|local    // HTTP connection
+    typesAligned: list{type}, private|local // Track types aligned for session
+  
+    void send(object msg)
+
+    // Subscriptions for session
+    table Subscribtion: subscriber::
+      id: string, key // Subscription id
+

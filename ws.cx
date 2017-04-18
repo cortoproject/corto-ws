@@ -34,22 +34,22 @@ struct dataMember::
 
 struct dataObject::
   id: string
-  parent: string, optional
-  owner: string, optional
-  value: list{verbatim{"text/json"}}, optional
-  leaf: bool, optional
+  p: string, optional
+  o: object, optional
+  v: verbatim{"text/json"}, optional
 
-struct dataElement::
-  type: string
+struct dataType::
+  type: type
   kind: string, optional
   members: list{dataMember}, optional
   constants: list{string}, optional
-  update: list{dataObject}, optional
-  delete: list{dataObject}, optional
+  elementType: type, optional
+  set: list{dataObject}, optional
+  del: list{dataObject}, optional
 
 struct data::
   sub: string
-  data: list{dataElement}
+  data: list{dataType}
 
 
 // WS Server
@@ -67,12 +67,16 @@ container Server: SockJs, implements={dispatcher}::
     id: string, key // Session id
 
     // Private members
-    conn: HTTP/Connection, private|local    // HTTP connection
+    conn: HTTP/Connection, private|local // HTTP connection
     typesAligned: list{type}, private|local // Track types aligned for session
   
     void send(object msg)
 
     // Subscriptions for session
-    table Subscribtion: subscriber::
+    table Subscription: subscriber::
       id: string, key // Subscription id
+      batch: list{event}, private|local // Events to be handled in next batch
+      void addEvent(event e)
+      void processEvents()
+
 

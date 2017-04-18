@@ -8,22 +8,8 @@
 
 #include <corto/ws/ws.h>
 
-corto_void _ws_Server_onClose(
-    ws_Server this,
-    server_HTTP_Connection c)
-{
-/* $begin(corto/ws/Server/onClose) */
-    if (c->udata) {
-        corto_trace("ws: close: session '%s' disconnected", corto_idof(c->udata));
-        corto_delete(c->udata);
-        corto_setref(&c->udata, NULL);
-    }    
-
-/* $end */
-}
-
-/* $header(corto/ws/Server/onData) */
-void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_connect *clientMsg) 
+/* $header() */
+static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_connect *clientMsg) 
 {
     corto_tablescope sessions = corto_lookupAssert(this, "Session", corto_tablescope_o);
     ws_Server_Session session = NULL;
@@ -38,7 +24,7 @@ void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_connect *c
             session = ws_Server_SessionCreateChild(sessions, sessionId);
             corto_setref(&session->conn, c);
             corto_setref(&c->udata, session);
-            corto_trace("ws: connect: session '%s' established", sessionId);
+            corto_trace("ws: connect: established session '%s'", sessionId);
             corto_dealloc(sessionId);
         } else {
             corto_setref(&session->conn, c);
@@ -53,15 +39,82 @@ void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_connect *c
     corto_delete(msg);
 }
 
-void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_connect clientMsg) 
+static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *clientMsg) 
 {
+    ws_Server_Session session = ws_Server_Session(c->udata);
+    corto_tablescope subscriptions = corto_lookupAssert(session, "Subscription", corto_tablescope_o);
+
+    /* If there is an existing subscription for the specified id, delete it. */
+    corto_subscriber sub = corto_lookup(subscriptions, clientMsg->id);
+    if (sub) {
+        corto_delete(sub);
+        corto_release(sub);
+    }
+
+    /* Create new subscription */
+    sub = corto_declareChild(subscriptions, clientMsg->id, ws_Server_Session_Subscription_o);
+    if (!sub) {
+        corto_error("ws: creation of subscriber failed: %s", corto_lasterr());
+        goto error;
+    }
+    
+    /* Query parameters */
+    corto_setstr(&sub->parent, clientMsg->parent);
+    corto_setstr(&sub->expr, clientMsg->expr);
+    corto_setstr(&corto_observer(sub)->type, clientMsg->type);
+    
+    /*sub->offset = clientMsg->offset;
+    sub->limit = clientMsg->limit;*/
+
+    /* Set dispatcher & instance to session and server */
+    corto_setref(&corto_observer(sub)->instance, session);
+    corto_setref(&corto_observer(sub)->dispatcher, this);
+
+    /* Enable subscriber */
+    corto_observer(sub)->enabled = TRUE;
+
+    if (corto_define(sub)) {
+        corto_error("ws: failed to create subscriber: %s", corto_lasterr());
+    }
+
+    corto_trace("ws: sub: subscriber '%s' listening to '%s', '%s'", 
+        clientMsg->id, clientMsg->parent, clientMsg->expr);
+
+error:
+    return;
 }
 
-void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_connect clientMsg) 
-{
+static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub *clientMsg) 
+{    
+    ws_Server_Session session = ws_Server_Session(c->udata);
+    corto_tablescope subscriptions = corto_lookupAssert(session, "Subscription", corto_tablescope_o);
+
+    /* If there is an existing subscription for the specified id, delete it. */
+    corto_subscriber sub = corto_lookup(subscriptions, clientMsg->id);
+    if (sub) {
+        corto_delete(sub);
+        corto_release(sub);
+    }
+
+    corto_trace("ws: unsub: deleted subscriber '%s'", clientMsg->id);
 }
 
 /* $end */
+
+corto_void _ws_Server_onClose(
+    ws_Server this,
+    server_HTTP_Connection c)
+{
+/* $begin(corto/ws/Server/onClose) */
+    if (c->udata) {
+        corto_trace("ws: close: disconnected session '%s'", corto_idof(c->udata));
+        corto_delete(c->udata);
+        corto_setref(&c->udata, NULL);
+    }    
+
+/* $end */
+}
+
 corto_void _ws_Server_onData(
     ws_Server this,
     server_HTTP_Connection c,
@@ -70,22 +123,23 @@ corto_void _ws_Server_onData(
 /* $begin(corto/ws/Server/onData) */
     corto_object o = corto_createFromContent("text/json", msg);
     if (!o) {
-        corto_error("ws: %s (invalid message)", corto_lasterr());
+        corto_error("ws: %s (malformed message)", corto_lasterr());
         return;
     }
+
+    if (corto_typeof(corto_typeof(o)) != corto_type(corto_struct_o)) goto error_type;
 
     corto_struct msgType = corto_struct(corto_typeof(o));
 
     if (msgType == ws_connect_o) ws_Server_onConnect(this, c, ws_connect(o));
-    else if (msgType == ws_sub_o) {
+    else if (msgType == ws_sub_o) ws_Server_onSub(this, c, ws_sub(o));
+    else if (msgType == ws_unsub_o) ws_Server_onUnsub(this, c, ws_unsub(o));
+    else goto error_type;
+    corto_delete(o);
 
-    } else if (msgType == ws_unsub_o) {
-
-    } else {
-        corto_error("unexpected message type '%s' received from client",
-            corto_fullpath(NULL, msgType));
-    }
-
+    return;
+error_type: 
+    corto_error("ws: received invalid message type: '%s'", corto_fullpath(NULL, corto_typeof(o)));
 /* $end */
 }
 
@@ -93,8 +147,8 @@ corto_void _ws_Server_onPoll(
     ws_Server this)
 {
 /* $begin(corto/ws/Server/onPoll) */
-    corto_event e;
-    corto_ll events = corto_llNew();
+    corto_observableEvent e;
+    corto_ll subs = corto_llNew();
 
     /* Poll SockJs so it can send out heartbeats */
     server_SockJs_onPoll_v(this);
@@ -102,26 +156,35 @@ corto_void _ws_Server_onPoll(
     /* Collect events */
     corto_lock(this);
     while ((e = corto_llTakeFirst(this->events))) {
-        corto_llAppend(events, e);
+        /* It is possible that the session has already been deleted */
+        if (!corto_checkState(e->me, CORTO_DESTRUCTED)) {
+            ws_Server_Session_Subscription_addEvent(e->observer, e);
+            if (!corto_llHasObject(subs, e->observer)) {
+                corto_llInsert(subs, e->observer);
+            }
+        } else {
+            corto_assert(corto_release(e) == 0, "event is leaking");
+        }
     }
     corto_unlock(this);
 
-    /* Handle events outside of lock */
-    while ((e = corto_llTakeFirst(events))) {
-        corto_event_handle(e);
-        corto_release(e);
+    /* Process events outside of lock */
+    corto_iter it = corto_llIter(subs);
+    while (corto_iterHasNext(&it)) {
+        ws_Server_Session_Subscription sub = corto_iterNext(&it);
+        ws_Server_Session_Subscription_processEvents(sub);
 
-        /* If processing lots of events, ensure that SockJs gets a chance to
-         * send out heartbeats */
+        /* Give SockJS some room to breathe */
         server_SockJs_onPoll_v(this);
     }
 
-    corto_llFree(events);
+    corto_llFree(subs);
+
 /* $end */
 }
 
 /* $header(corto/ws/Server/post) */
-#define WS_QUEUE_THRESHOLD 100
+#define WS_QUEUE_THRESHOLD 10000
 #define WS_QUEUE_THRESHOLD_SLEEP 10000000
 
 static corto_subscriberEvent ws_Server_findEvent(ws_Server this, corto_subscriberEvent e) {

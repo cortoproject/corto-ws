@@ -22,7 +22,7 @@
 #include <corto/ws/c/_api.h>
 
 /* $body() */
-/* Enter code that requires types here */
+corto_string ws_serializer_serialize(corto_object o);
 /* $end */
 
 #endif

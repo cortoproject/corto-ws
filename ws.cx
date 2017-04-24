@@ -23,14 +23,21 @@ struct sub::
   offset: uint64
   limit: uint64
 
+// Confirm subscription (server -> client)
+struct subok::
+  id: string
+
+// Failed to create subscription (server -> client)
+struct subfail::
+  id: string
+  error: string
+
 // Unsubscribe for data (client -> server)
 struct unsub::
   id: string
 
 // Data message (server -> client)
-struct dataMember::
-  name: string
-  type: lang/type
+verbatim dataMembers: "text/json"
 
 struct dataObject::
   id: string
@@ -41,7 +48,8 @@ struct dataObject::
 struct dataType::
   type: type
   kind: string, optional
-  members: list{dataMember}, optional
+  reference: bool, optional
+  members: dataMembers, optional
   constants: list{string}, optional
   elementType: type, optional
   set: list{dataObject}, optional
@@ -56,6 +64,8 @@ struct data::
 container Server: SockJs, implements={dispatcher}::
   
   void post(event e) // Post event to event queue
+  void purge(subscriber sub) // Purge events from queue for a subscriber
+  void flush(subscriber sub) // Flush pending events for a subscriber
   void onPoll() override // Read events from event queue
   void onData(HTTP/Connection c, string msg) override // Receive data
   void onClose(HTTP/Connection c) override // Connection closed

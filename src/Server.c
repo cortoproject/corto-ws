@@ -43,6 +43,7 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
 {
     ws_Server_Session session = ws_Server_Session(c->udata);
     corto_tablescope subscriptions = corto_lookupAssert(session, "Subscription", corto_tablescope_o);
+    corto_object msg = NULL;
 
     /* If there is an existing subscription for the specified id, delete it. */
     corto_subscriber sub = corto_lookup(subscriptions, clientMsg->id);
@@ -54,34 +55,44 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
     /* Create new subscription */
     sub = corto_declareChild(subscriptions, clientMsg->id, ws_Server_Session_Subscription_o);
     if (!sub) {
+        msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
         corto_error("ws: creation of subscriber failed: %s", corto_lasterr());
-        goto error;
-    }
+    } else {
     
-    /* Query parameters */
-    corto_setstr(&sub->parent, clientMsg->parent);
-    corto_setstr(&sub->expr, clientMsg->expr);
-    corto_setstr(&corto_observer(sub)->type, clientMsg->type);
-    
-    /*sub->offset = clientMsg->offset;
-    sub->limit = clientMsg->limit;*/
+        /* Query parameters */
+        corto_setstr(&sub->parent, clientMsg->parent);
+        corto_setstr(&sub->expr, clientMsg->expr);
+        corto_setstr(&corto_observer(sub)->type, clientMsg->type);
+        
+        /*sub->offset = clientMsg->offset;
+        sub->limit = clientMsg->limit;*/
 
-    /* Set dispatcher & instance to session and server */
-    corto_setref(&corto_observer(sub)->instance, session);
-    corto_setref(&corto_observer(sub)->dispatcher, this);
+        /* Set dispatcher & instance to session and server */
+        corto_setref(&corto_observer(sub)->instance, session);
+        corto_setref(&corto_observer(sub)->dispatcher, this);
 
-    /* Enable subscriber */
-    corto_observer(sub)->enabled = TRUE;
+        /* Enable subscriber */
+        corto_observer(sub)->enabled = TRUE;
 
-    if (corto_define(sub)) {
-        corto_error("ws: failed to create subscriber: %s", corto_lasterr());
+        if (corto_define(sub)) {
+            msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
+            corto_error("ws: failed to create subscriber: %s", corto_lasterr());
+            corto_delete(sub);
+            sub = NULL;
+        } else {
+            msg = ws_subokCreate(corto_idof(sub));
+            corto_trace("ws: sub: subscriber '%s' listening to '%s', '%s'", 
+                clientMsg->id, clientMsg->parent, clientMsg->expr);
+        }
     }
 
-    corto_trace("ws: sub: subscriber '%s' listening to '%s', '%s'", 
-        clientMsg->id, clientMsg->parent, clientMsg->expr);
+    ws_Server_Session_send(session, msg);
+    corto_delete(msg);
 
-error:
-    return;
+    /* Flush aligned data for quick response time */
+    if (sub) {
+        ws_Server_flush(this, sub);
+    }
 }
 
 static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub *clientMsg) 
@@ -92,6 +103,7 @@ static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub
     /* If there is an existing subscription for the specified id, delete it. */
     corto_subscriber sub = corto_lookup(subscriptions, clientMsg->id);
     if (sub) {
+        ws_Server_purge(this, sub);
         corto_delete(sub);
         corto_release(sub);
     }
@@ -100,6 +112,55 @@ static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub
 }
 
 /* $end */
+
+corto_void _ws_Server_flush(
+    ws_Server this,
+    corto_subscriber sub)
+{
+/* $begin(corto/ws/Server/flush) */
+    corto_observableEvent e;
+    corto_ll subs = corto_llNew();
+
+    /* Poll SockJs so it can send out heartbeats */
+    server_SockJs_onPoll_v(this);
+
+    /* Collect events */
+    corto_lock(this);
+    corto_iter it = corto_llIter(this->events);
+    while (corto_iterHasNext(&it)) {
+        e = corto_iterNext(&it);
+
+        /* Only take events for specified subscriber */
+        if (!sub || (sub == (corto_subscriber)e->observer)) {
+            corto_llIterRemove(&it);
+
+            /* It is possible that the session has already been deleted */
+            if (!corto_checkState(e->me, CORTO_DESTRUCTED)) {
+                ws_Server_Session_Subscription_addEvent(e->observer, e);
+                if (!corto_llHasObject(subs, e->observer)) {
+                    corto_llInsert(subs, e->observer);
+                }
+            } else {
+                corto_assert(corto_release(e) == 0, "event is leaking");
+            }
+        }
+    }
+    corto_unlock(this);
+
+    /* Process events outside of lock */
+    it = corto_llIter(subs);
+    while (corto_iterHasNext(&it)) {
+        ws_Server_Session_Subscription sub = corto_iterNext(&it);
+        ws_Server_Session_Subscription_processEvents(sub);
+
+        /* Give SockJS some room to breathe */
+        server_SockJs_onPoll_v(this);
+    }
+
+    corto_llFree(subs);
+
+/* $end */
+}
 
 corto_void _ws_Server_onClose(
     ws_Server this,
@@ -147,38 +208,8 @@ corto_void _ws_Server_onPoll(
     ws_Server this)
 {
 /* $begin(corto/ws/Server/onPoll) */
-    corto_observableEvent e;
-    corto_ll subs = corto_llNew();
 
-    /* Poll SockJs so it can send out heartbeats */
-    server_SockJs_onPoll_v(this);
-
-    /* Collect events */
-    corto_lock(this);
-    while ((e = corto_llTakeFirst(this->events))) {
-        /* It is possible that the session has already been deleted */
-        if (!corto_checkState(e->me, CORTO_DESTRUCTED)) {
-            ws_Server_Session_Subscription_addEvent(e->observer, e);
-            if (!corto_llHasObject(subs, e->observer)) {
-                corto_llInsert(subs, e->observer);
-            }
-        } else {
-            corto_assert(corto_release(e) == 0, "event is leaking");
-        }
-    }
-    corto_unlock(this);
-
-    /* Process events outside of lock */
-    corto_iter it = corto_llIter(subs);
-    while (corto_iterHasNext(&it)) {
-        ws_Server_Session_Subscription sub = corto_iterNext(&it);
-        ws_Server_Session_Subscription_processEvents(sub);
-
-        /* Give SockJS some room to breathe */
-        server_SockJs_onPoll_v(this);
-    }
-
-    corto_llFree(subs);
+    ws_Server_flush(this, NULL);
 
 /* $end */
 }
@@ -210,8 +241,20 @@ corto_void _ws_Server_post(
     corto_uint32 size = 0;
     corto_subscriberEvent e2;
 
-    /* Append new event to queue */
     corto_lock(this);
+
+    /* Ignore events from destructed sessions or subscribers */
+    corto_object 
+        observer = corto_observableEvent(e)->observer,
+        instance = corto_observableEvent(e)->me;
+
+    if (corto_checkState(observer, CORTO_DESTRUCTED) || 
+        (instance && corto_checkState(instance, CORTO_DESTRUCTED))) 
+    {
+        corto_release(e);
+        corto_unlock(this);
+        return;
+    }
 
     /* Check if there is already another event in the queue for the same object.
      * if so, replace event with latest update. */
@@ -229,6 +272,27 @@ corto_void _ws_Server_post(
     if (size > WS_QUEUE_THRESHOLD) {
         corto_sleep(0, WS_QUEUE_THRESHOLD_SLEEP);
     }
+
+/* $end */
+}
+
+corto_void _ws_Server_purge(
+    ws_Server this,
+    corto_subscriber sub)
+{
+/* $begin(corto/ws/Server/purge) */
+
+    /* Purge events for specified subscriber */
+    corto_lock(this);
+    corto_iter it = corto_llIter(this->events);
+    while (corto_iterHasNext(&it)) {
+        corto_observableEvent e = corto_iterNext(&it);
+        if (e->observer == corto_function(sub)) {
+            corto_release(e);
+            corto_llIterRemove(&it);
+        }
+    }
+    corto_unlock(this);
 
 /* $end */
 }

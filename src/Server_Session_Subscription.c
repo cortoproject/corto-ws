@@ -20,21 +20,12 @@ corto_void _ws_Server_Session_Subscription_addEvent(
 }
 
 /* $header(corto/ws/Server/Session/Subscription/processEvents) */
-static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
-    corto_iter it = corto_llIter(data->data);
-    while (corto_iterHasNext(&it)) {
-        ws_dataType *dataType = corto_iterNext(&it);
-        if (dataType->type == type) {
-            return dataType;
-        }
-    }
-    return NULL;
-}
-
 typedef struct ws_typeSerializer_t {
     ws_Server_Session session;
     ws_data *msg;
     ws_dataType *dataType;
+    corto_buffer memberBuff;
+    corto_int32 count;
 } ws_typeSerializer_t;
 
 ws_dataType* ws_data_addMetadata(
@@ -47,14 +38,22 @@ corto_int16 ws_typeSerializer_member(corto_serializer s, corto_value *info, void
     corto_type type = corto_value_getType(info);
     corto_member m = info->is.member.t;
 
-    if (!data->dataType->members) {
-        data->dataType->members = corto_alloc(sizeof(corto_ll));
-        *data->dataType->members = corto_llNew();
+    if (data->count) {
+        corto_buffer_appendstr(&data->memberBuff, ",");
+    } else {
+         corto_buffer_appendstr(&data->memberBuff, "{");   
     }
-    ws_dataMember *member = ws_dataMemberListAppendAlloc(*data->dataType->members);
-    corto_setstr(&member->name, corto_idof(m));
-    corto_setref(&member->type, type);
+
+    corto_id typeId;
+    corto_fullpath(typeId, type);
+    corto_string escaped = ws_serializer_escape(typeId);
+    corto_buffer_append(&data->memberBuff, "\"%s\":\"%s\"", corto_idof(m), escaped);
+    corto_dealloc(escaped);
+
+    data->count ++;
+
     ws_data_addMetadata(data->session, data->msg, type);
+
     return 0;
 }
 
@@ -96,6 +95,17 @@ static struct corto_serializer_s ws_typeSerializer(void) {
     return result;
 }
 
+static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
+    corto_iter it = corto_llIter(data->data);
+    while (corto_iterHasNext(&it)) {
+        ws_dataType *dataType = corto_iterNext(&it);
+        if (dataType->type == type) {
+            return dataType;
+        }
+    }
+    return NULL;
+}
+
 ws_dataType* ws_data_addMetadata(
     ws_Server_Session session, 
     ws_data *msg, 
@@ -111,9 +121,18 @@ ws_dataType* ws_data_addMetadata(
         corto_type kind = corto_typeof(t);
         corto_stringSet(dataType->kind, corto_fullpath(NULL, kind));
         struct corto_serializer_s s = ws_typeSerializer();
-        ws_typeSerializer_t walkData = {session, msg, dataType};
+        ws_typeSerializer_t walkData = {session, msg, dataType, CORTO_BUFFER_INIT, 0};
         corto_llInsert(session->typesAligned, t);
         corto_metaWalk(&s, t, &walkData);
+        if (walkData.count) {
+            corto_buffer_appendstr(&walkData.memberBuff, "}");
+            corto_string members = corto_buffer_str(&walkData.memberBuff);
+            corto_stringSet(dataType->members, members);
+            corto_dealloc(members);
+        }
+        if (t->reference) {
+            corto_boolSet(dataType->reference, TRUE);
+        }
     }
 
     return dataType;
@@ -126,9 +145,9 @@ corto_void _ws_Server_Session_Subscription_processEvents(
 /* $begin(corto/ws/Server/Session/Subscription/processEvents) */
     ws_Server_Session session = corto_parentof(corto_parentof(this));
 
-    corto_trace("ws: prepare %d events for '%s'",
+    corto_trace("ws: prepare %d events for '%s' [%p]",
         corto_llSize(this->batch),
-        corto_fullpath(NULL, this));
+        corto_fullpath(NULL, this), this);
 
     ws_data *msg = corto_declare(ws_data_o);
     corto_setstr(&msg->sub, corto_idof(this));
@@ -137,6 +156,12 @@ corto_void _ws_Server_Session_Subscription_processEvents(
     while ((e = corto_llTakeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;
         corto_object o = e->result.object;
+        if (!o) {
+            corto_warning("ws: event for '%s' does not have an object reference", e->result.id);
+            corto_release(e);
+            continue;
+        }
+
         corto_type t = corto_typeof(o);
         ws_dataType *dataType = ws_data_addMetadata(session, msg, t);
 

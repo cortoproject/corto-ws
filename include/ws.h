@@ -23,6 +23,7 @@
 
 /* $body() */
 corto_string ws_serializer_serialize(corto_object o);
+corto_string ws_serializer_escape(corto_string str);
 /* $end */
 
 #endif

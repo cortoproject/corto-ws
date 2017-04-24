@@ -7,7 +7,7 @@ typedef struct ws_serializer_t {
     corto_buffer *buff;
 } ws_serializer_t;
 
-static corto_string ws_serializer_escape(corto_string str) {
+corto_string ws_serializer_escape(corto_string str) {
     int length = stresc(NULL, 0, str);
     corto_string result = corto_alloc(length + 1);
     stresc(result, length, str);
@@ -25,6 +25,18 @@ static corto_int16 ws_serializer_primitive(
     ws_serializer_t *data = userData;
     corto_string str = NULL, prev = NULL;
 
+    /* Binary numbers translate to hex (0x0) numbers which JSON doesn't understand.
+     * translate to a regular unsigned int */
+    if (t->kind == CORTO_BINARY) {
+        switch(t->width) {
+        case CORTO_WIDTH_8: t = corto_primitive(corto_uint8_o); break;
+        case CORTO_WIDTH_16: t = corto_primitive(corto_uint16_o); break;
+        case CORTO_WIDTH_32: t = corto_primitive(corto_uint32_o); break;
+        case CORTO_WIDTH_64: t = corto_primitive(corto_uint64_o); break;
+        case CORTO_WIDTH_WORD: t = corto_primitive(corto_uint64_o); break; /* TODO: add uintptr */
+        }
+    }
+
     if (data->count) {
         corto_buffer_appendstr(data->buff, ",");
     }
@@ -34,7 +46,6 @@ static corto_int16 ws_serializer_primitive(
     }
 
     switch(t->kind) {
-    case CORTO_BINARY:
     case CORTO_BOOLEAN:
     case CORTO_UINTEGER:
     case CORTO_INTEGER:
@@ -57,6 +68,8 @@ static corto_int16 ws_serializer_primitive(
     case CORTO_ENUM:
     case CORTO_CHARACTER:
         corto_buffer_append(data->buff, "\"%s\"", str);
+        break;
+    default: 
         break;
     }
 
@@ -131,7 +144,7 @@ static struct corto_serializer_s ws_serializer(void) {
     result.program[CORTO_COMPOSITE] = ws_serializer_object;
     result.program[CORTO_COLLECTION] = ws_serializer_object;
     result.reference = ws_serializer_reference;
-    result.metaprogram[CORTO_BASE] = NULL;
+    result.metaprogram[CORTO_BASE] = corto_serializeMembers;
 
     return result;
 }

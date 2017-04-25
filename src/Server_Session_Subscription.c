@@ -145,7 +145,7 @@ corto_void _ws_Server_Session_Subscription_processEvents(
 /* $begin(corto/ws/Server/Session/Subscription/processEvents) */
     ws_Server_Session session = corto_parentof(corto_parentof(this));
 
-    corto_trace("ws: prepare %d events for '%s' [%p]",
+    corto_debug("ws: prepare %d events for '%s' [%p]",
         corto_llSize(this->batch),
         corto_fullpath(NULL, this), this);
 

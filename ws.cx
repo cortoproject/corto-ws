@@ -61,13 +61,13 @@ struct data::
 
 
 // WS Server
-container Server: SockJs, implements={dispatcher}::
+container Server: Service, implements={dispatcher}::
   
   void post(event e) // Post event to event queue
   void purge(subscriber sub) // Purge events from queue for a subscriber
   void flush(subscriber sub) // Flush pending events for a subscriber
   void onPoll() override // Read events from event queue
-  void onData(HTTP/Connection c, string msg) override // Receive data
+  void onMessage(HTTP/Connection c, string msg) override // Receive data
   void onClose(HTTP/Connection c) override // Connection closed
 
   events: list{event}, private|local // Event queue

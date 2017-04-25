@@ -14,7 +14,7 @@ corto_void _ws_Server_Session_send(
 {
 /* $begin(corto/ws/Server/Session/send) */
     corto_string msgJson = corto_object_contentof(NULL, "text/json", msg);
-    server_SockJs_write(this->conn, msgJson);
+    server_HTTP_Connection_write(this->conn, msgJson);
 
 /* $end */
 }

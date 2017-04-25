@@ -121,9 +121,6 @@ corto_void _ws_Server_flush(
     corto_observableEvent e;
     corto_ll subs = corto_llNew();
 
-    /* Poll SockJs so it can send out heartbeats */
-    server_SockJs_onPoll_v(this);
-
     /* Collect events */
     corto_lock(this);
     corto_iter it = corto_llIter(this->events);
@@ -152,9 +149,6 @@ corto_void _ws_Server_flush(
     while (corto_iterHasNext(&it)) {
         ws_Server_Session_Subscription sub = corto_iterNext(&it);
         ws_Server_Session_Subscription_processEvents(sub);
-
-        /* Give SockJS some room to breathe */
-        server_SockJs_onPoll_v(this);
     }
 
     corto_llFree(subs);
@@ -176,12 +170,12 @@ corto_void _ws_Server_onClose(
 /* $end */
 }
 
-corto_void _ws_Server_onData(
+corto_void _ws_Server_onMessage(
     ws_Server this,
     server_HTTP_Connection c,
     corto_string msg)
 {
-/* $begin(corto/ws/Server/onData) */
+/* $begin(corto/ws/Server/onMessage) */
     corto_object o = corto_createFromContent("text/json", msg);
     if (!o) {
         corto_error("ws: %s (malformed message)", corto_lasterr());

@@ -8,7 +8,7 @@
 
 #include <corto/ws/ws.h>
 
-corto_void _ws_Server_Session_send(
+void _ws_Server_Session_send(
     ws_Server_Session this,
     corto_object msg)
 {

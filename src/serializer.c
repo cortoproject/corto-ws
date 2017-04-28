@@ -16,12 +16,12 @@ corto_string ws_serializer_escape(corto_string str) {
 }
 
 static corto_int16 ws_serializer_primitive(
-    corto_serializer s, 
+    corto_walk_opt* s, 
     corto_value *info, 
     void *userData) 
 {
-    corto_primitive t = corto_primitive(corto_value_getType(info));
-    void *ptr = corto_value_getPtr(info);
+    corto_primitive t = corto_primitive(corto_value_typeof(info));
+    void *ptr = corto_value_ptrof(info);
     ws_serializer_t *data = userData;
     corto_string str = NULL, prev = NULL;
 
@@ -41,7 +41,7 @@ static corto_int16 ws_serializer_primitive(
         corto_buffer_appendstr(data->buff, ",");
     }
 
-    if (corto_convert(t, ptr, corto_primitive(corto_string_o), &str)) {
+    if (corto_ptr_cast(t, ptr, corto_primitive(corto_string_o), &str)) {
         goto error;
     }
 
@@ -83,12 +83,12 @@ error:
 }
 
 static corto_int16 ws_serializer_reference(
-    corto_serializer s, 
+    corto_walk_opt* s, 
     corto_value *info, 
     void *userData) 
 {
     ws_serializer_t *data = userData;
-    corto_object o = *(corto_object*)corto_value_getPtr(info);
+    corto_object o = *(corto_object*)corto_value_ptrof(info);
     corto_id id;
     corto_fullpath(id, o);
     char *str = ws_serializer_escape(id);
@@ -102,23 +102,23 @@ static corto_int16 ws_serializer_reference(
 }
 
 static corto_int16 ws_serializer_object(
-    corto_serializer s, 
+    corto_walk_opt* s, 
     corto_value *info, 
     void *userData) 
 {
     ws_serializer_t *data = userData;
     ws_serializer_t privateData = {.count = 0, .valueCount = 0, .buff = data->buff};
-    corto_type t = corto_value_getType(info);
+    corto_type t = corto_value_typeof(info);
 
     if (data->count) corto_buffer_appendstr(data->buff, ",");
     corto_buffer_appendstr(data->buff, "[");
 
     if (t->kind == CORTO_COMPOSITE) {
-        if (corto_serializeMembers(s, info, &privateData)) {
+        if (corto_walk_members(s, info, &privateData)) {
             goto error;
         }
     } else {
-        if (corto_serializeElements(s, info, &privateData)) {
+        if (corto_walk_elements(s, info, &privateData)) {
             goto error;
         }
     }
@@ -132,19 +132,19 @@ error:
     return -1;
 }
 
-static struct corto_serializer_s ws_serializer(void) {
-    struct corto_serializer_s result;
+static corto_walk_opt ws_serializer(void) {
+    corto_walk_opt result;
 
-    corto_serializerInit(&result);
+    corto_walk_init(&result);
     result.access = CORTO_PRIVATE;
     result.accessKind = CORTO_NOT;
-    result.aliasAction = CORTO_SERIALIZER_ALIAS_IGNORE;
-    result.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
+    result.aliasAction = CORTO_WALK_ALIAS_IGNORE;
+    result.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;
     result.program[CORTO_PRIMITIVE] = ws_serializer_primitive;
     result.program[CORTO_COMPOSITE] = ws_serializer_object;
     result.program[CORTO_COLLECTION] = ws_serializer_object;
     result.reference = ws_serializer_reference;
-    result.metaprogram[CORTO_BASE] = corto_serializeMembers;
+    result.metaprogram[CORTO_BASE] = corto_walk_members;
 
     return result;
 }
@@ -153,9 +153,9 @@ corto_string ws_serializer_serialize(corto_object o) {
     corto_string result = NULL;
     corto_buffer buff = CORTO_BUFFER_INIT;
     ws_serializer_t walkData = {0, 0, &buff};
-    struct corto_serializer_s s = ws_serializer();
+    corto_walk_opt s = ws_serializer();
 
-    if (corto_serialize(&s, o, &walkData)) {
+    if (corto_walk(&s, o, &walkData)) {
         goto error;
     }
 

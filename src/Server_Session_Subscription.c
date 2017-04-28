@@ -8,7 +8,7 @@
 
 #include <corto/ws/ws.h>
 
-corto_void _ws_Server_Session_Subscription_addEvent(
+void _ws_Server_Session_Subscription_addEvent(
     ws_Server_Session_Subscription this,
     corto_event e)
 {
@@ -33,9 +33,9 @@ ws_dataType* ws_data_addMetadata(
     ws_data *msg, 
     corto_type t);
 
-corto_int16 ws_typeSerializer_member(corto_serializer s, corto_value *info, void *userData) {
+corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void *userData) {
     ws_typeSerializer_t *data = userData;
-    corto_type type = corto_value_getType(info);
+    corto_type type = corto_value_typeof(info);
     corto_member m = info->is.member.t;
 
     if (data->count) {
@@ -57,9 +57,9 @@ corto_int16 ws_typeSerializer_member(corto_serializer s, corto_value *info, void
     return 0;
 }
 
-corto_int16 ws_typeSerializer_constant(corto_serializer s, corto_value *info, void *userData) {
+corto_int16 ws_typeSerializer_constant(corto_walk_opt* s, corto_value *info, void *userData) {
     ws_typeSerializer_t *data = userData;
-    corto_type type = corto_value_getType(info);
+    corto_type type = corto_value_typeof(info);
     corto_constant *c = info->is.constant.t;
 
     if (!data->dataType->constants) {
@@ -71,23 +71,23 @@ corto_int16 ws_typeSerializer_constant(corto_serializer s, corto_value *info, vo
     return 0;
 }
 
-corto_int16 ws_typeSerializer_element(corto_serializer s, corto_value *info, void *userData) {
+corto_int16 ws_typeSerializer_element(corto_walk_opt* s, corto_value *info, void *userData) {
     ws_typeSerializer_t *data = userData;
-    corto_type type = corto_value_getType(info);
+    corto_type type = corto_value_typeof(info);
     data->dataType->elementType = corto_alloc(sizeof(corto_object));
     corto_setref(data->dataType->elementType, type);
     ws_data_addMetadata(data->session, data->msg, type);
     return 0;
 }
 
-static struct corto_serializer_s ws_typeSerializer(void) {
-    struct corto_serializer_s result;
+static corto_walk_opt ws_typeSerializer(void) {
+    corto_walk_opt result;
 
-    corto_serializerInit(&result);
+    corto_walk_init(&result);
     result.access = CORTO_PRIVATE;
     result.accessKind = CORTO_NOT;
-    result.aliasAction = CORTO_SERIALIZER_ALIAS_IGNORE;
-    result.optionalAction = CORTO_SERIALIZER_OPTIONAL_ALWAYS;
+    result.aliasAction = CORTO_WALK_ALIAS_IGNORE;
+    result.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;
     result.metaprogram[CORTO_MEMBER] = ws_typeSerializer_member;
     result.metaprogram[CORTO_CONSTANT] = ws_typeSerializer_constant;
     result.metaprogram[CORTO_ELEMENT] = ws_typeSerializer_element;
@@ -120,10 +120,10 @@ ws_dataType* ws_data_addMetadata(
     if (!corto_llHasObject(session->typesAligned, t)) {
         corto_type kind = corto_typeof(t);
         corto_stringSet(dataType->kind, corto_fullpath(NULL, kind));
-        struct corto_serializer_s s = ws_typeSerializer();
+        corto_walk_opt s = ws_typeSerializer();
         ws_typeSerializer_t walkData = {session, msg, dataType, CORTO_BUFFER_INIT, 0};
         corto_llInsert(session->typesAligned, t);
-        corto_metaWalk(&s, t, &walkData);
+        corto_metawalk(&s, t, &walkData);
         if (walkData.count) {
             corto_buffer_appendstr(&walkData.memberBuff, "}");
             corto_string members = corto_buffer_str(&walkData.memberBuff);
@@ -139,7 +139,7 @@ ws_dataType* ws_data_addMetadata(
 }
 
 /* $end */
-corto_void _ws_Server_Session_Subscription_processEvents(
+void _ws_Server_Session_Subscription_processEvents(
     ws_Server_Session_Subscription this)
 {
 /* $begin(corto/ws/Server/Session/Subscription/processEvents) */

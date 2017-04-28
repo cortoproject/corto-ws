@@ -113,7 +113,7 @@ static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub
 
 /* $end */
 
-corto_void _ws_Server_flush(
+void _ws_Server_flush(
     ws_Server this,
     corto_subscriber sub)
 {
@@ -156,7 +156,7 @@ corto_void _ws_Server_flush(
 /* $end */
 }
 
-corto_void _ws_Server_onClose(
+void _ws_Server_onClose(
     ws_Server this,
     server_HTTP_Connection c)
 {
@@ -170,7 +170,7 @@ corto_void _ws_Server_onClose(
 /* $end */
 }
 
-corto_void _ws_Server_onMessage(
+void _ws_Server_onMessage(
     ws_Server this,
     server_HTTP_Connection c,
     corto_string msg)
@@ -198,7 +198,7 @@ error_type:
 /* $end */
 }
 
-corto_void _ws_Server_onPoll(
+void _ws_Server_onPoll(
     ws_Server this)
 {
 /* $begin(corto/ws/Server/onPoll) */
@@ -227,7 +227,7 @@ static corto_subscriberEvent ws_Server_findEvent(ws_Server this, corto_subscribe
     return NULL;
 }
 /* $end */
-corto_void _ws_Server_post(
+void _ws_Server_post(
     ws_Server this,
     corto_event e)
 {
@@ -270,7 +270,7 @@ corto_void _ws_Server_post(
 /* $end */
 }
 
-corto_void _ws_Server_purge(
+void _ws_Server_purge(
     ws_Server this,
     corto_subscriber sub)
 {

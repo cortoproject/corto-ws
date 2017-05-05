@@ -118,24 +118,24 @@ void _ws_Server_flush(
     corto_subscriber sub)
 {
 /* $begin(corto/ws/Server/flush) */
-    corto_observableEvent e;
+    corto_subscriberEvent *e;
     corto_ll subs = corto_llNew();
 
     /* Collect events */
     corto_lock(this);
     corto_iter it = corto_llIter(this->events);
-    while (corto_iterHasNext(&it)) {
-        e = corto_iterNext(&it);
+    while (corto_iter_hasNext(&it)) {
+        e = corto_iter_next(&it);
 
         /* Only take events for specified subscriber */
-        if (!sub || (sub == (corto_subscriber)e->observer)) {
+        if (!sub || (sub == e->subscriber)) {
             corto_llIterRemove(&it);
 
             /* It is possible that the session has already been deleted */
-            if (!corto_checkState(e->me, CORTO_DESTRUCTED)) {
-                ws_Server_Session_Subscription_addEvent(e->observer, e);
-                if (!corto_llHasObject(subs, e->observer)) {
-                    corto_llInsert(subs, e->observer);
+            if (!corto_checkState(e->instance, CORTO_DESTRUCTED)) {
+                ws_Server_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
+                if (!corto_llHasObject(subs, e->subscriber)) {
+                    corto_llInsert(subs, e->subscriber);
                 }
             } else {
                 corto_assert(corto_release(e) == 0, "event is leaking");
@@ -146,8 +146,8 @@ void _ws_Server_flush(
 
     /* Process events outside of lock */
     it = corto_llIter(subs);
-    while (corto_iterHasNext(&it)) {
-        ws_Server_Session_Subscription sub = corto_iterNext(&it);
+    while (corto_iter_hasNext(&it)) {
+        ws_Server_Session_Subscription sub = corto_iter_next(&it);
         ws_Server_Session_Subscription_processEvents(sub);
     }
 
@@ -212,14 +212,14 @@ void _ws_Server_onPoll(
 #define WS_QUEUE_THRESHOLD 10000
 #define WS_QUEUE_THRESHOLD_SLEEP 10000000
 
-static corto_subscriberEvent ws_Server_findEvent(ws_Server this, corto_subscriberEvent e) {
+static corto_subscriberEvent* ws_Server_findEvent(ws_Server this, corto_subscriberEvent *e) {
     corto_iter iter = corto_llIter(this->events);
-    corto_subscriberEvent e2;
-    while ((corto_iterHasNext(&iter))) {
-        e2 = corto_iterNext(&iter);
-        if (!strcmp(e2->result.id, e->result.id) &&
-            !strcmp(e2->result.parent, e->result.parent) &&
-            (corto_observableEvent(e2)->observer == corto_observableEvent(e)->observer))
+    corto_subscriberEvent *e2;
+    while ((corto_iter_hasNext(&iter))) {
+        e2 = corto_iter_next(&iter);
+        if (!strcmp(e2->data.id, e->data.id) &&
+            !strcmp(e2->data.parent, e->data.parent) &&
+            (e2->subscriber == e->subscriber))
         {
             return e2;
         }
@@ -229,18 +229,18 @@ static corto_subscriberEvent ws_Server_findEvent(ws_Server this, corto_subscribe
 /* $end */
 void _ws_Server_post(
     ws_Server this,
-    corto_event e)
+    corto_event *e)
 {
 /* $begin(corto/ws/Server/post) */
     corto_uint32 size = 0;
-    corto_subscriberEvent e2;
+    corto_subscriberEvent *e2;
 
     corto_lock(this);
 
     /* Ignore events from destructed sessions or subscribers */
     corto_object 
-        observer = corto_observableEvent(e)->observer,
-        instance = corto_observableEvent(e)->me;
+        observer = ((corto_subscriberEvent*)e)->subscriber,
+        instance = ((corto_subscriberEvent*)e)->instance;
 
     if (corto_checkState(observer, CORTO_DESTRUCTED) || 
         (instance && corto_checkState(instance, CORTO_DESTRUCTED))) 
@@ -279,9 +279,9 @@ void _ws_Server_purge(
     /* Purge events for specified subscriber */
     corto_lock(this);
     corto_iter it = corto_llIter(this->events);
-    while (corto_iterHasNext(&it)) {
-        corto_observableEvent e = corto_iterNext(&it);
-        if (e->observer == corto_function(sub)) {
+    while (corto_iter_hasNext(&it)) {
+        corto_subscriberEvent *e = corto_iter_next(&it);
+        if (e->subscriber == sub) {
             corto_release(e);
             corto_llIterRemove(&it);
         }

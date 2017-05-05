@@ -13,8 +13,9 @@ void _ws_Server_Session_send(
     corto_object msg)
 {
 /* $begin(corto/ws/Server/Session/send) */
-    corto_string msgJson = corto_object_contentof(NULL, "text/json", msg);
+    corto_string msgJson = corto_object_contentof(msg, "text/json");
     server_HTTP_Connection_write(this->conn, msgJson);
+    corto_dealloc(msgJson);
 
 /* $end */
 }

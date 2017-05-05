@@ -10,7 +10,7 @@
 
 void _ws_Server_Session_Subscription_addEvent(
     ws_Server_Session_Subscription this,
-    corto_event e)
+    corto_event *e)
 {
 /* $begin(corto/ws/Server/Session/Subscription/addEvent) */
 
@@ -97,8 +97,8 @@ static corto_walk_opt ws_typeSerializer(void) {
 
 static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
     corto_iter it = corto_llIter(data->data);
-    while (corto_iterHasNext(&it)) {
-        ws_dataType *dataType = corto_iterNext(&it);
+    while (corto_iter_hasNext(&it)) {
+        ws_dataType *dataType = corto_iter_next(&it);
         if (dataType->type == type) {
             return dataType;
         }
@@ -152,12 +152,12 @@ void _ws_Server_Session_Subscription_processEvents(
     ws_data *msg = corto_declare(ws_data_o);
     corto_setstr(&msg->sub, corto_idof(this));
 
-    corto_subscriberEvent e;
+    corto_subscriberEvent *e;
     while ((e = corto_llTakeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;
-        corto_object o = e->result.object;
+        corto_object o = e->data.object;
         if (!o) {
-            corto_warning("ws: event for '%s' does not have an object reference", e->result.id);
+            corto_warning("ws: event for '%s' does not have an object reference", e->data.id);
             corto_release(e);
             continue;
         }
@@ -165,7 +165,7 @@ void _ws_Server_Session_Subscription_processEvents(
         corto_type t = corto_typeof(o);
         ws_dataType *dataType = ws_data_addMetadata(session, msg, t);
 
-        corto_eventMask mask = corto_observableEvent(e)->mask;
+        corto_eventMask mask = corto_observerEvent(e)->event;
         if (mask & (CORTO_ON_UPDATE|CORTO_ON_DEFINE)) {
             if (!dataType->set) {
                 dataType->set = corto_alloc(sizeof(corto_ll));
@@ -181,12 +181,12 @@ void _ws_Server_Session_Subscription_processEvents(
         }
 
         if (dataObject) {
-            corto_setstr(&dataObject->id, e->result.id);
-            if (strcmp(e->result.parent, ".")) {
-                corto_stringSet(dataObject->p, e->result.parent);
+            corto_setstr(&dataObject->id, e->data.id);
+            if (strcmp(e->data.parent, ".")) {
+                corto_stringSet(dataObject->p, e->data.parent);
             }
 
-            corto_string value = ws_serializer_serialize(e->result.object);
+            corto_string value = ws_serializer_serialize(e->data.object);
             if (value) {
                 corto_stringSet(dataObject->v, NULL);
                 *(corto_string*)dataObject->v = value;

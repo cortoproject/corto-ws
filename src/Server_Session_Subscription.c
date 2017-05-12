@@ -14,7 +14,7 @@ void _ws_Server_Session_Subscription_addEvent(
 {
 /* $begin(corto/ws/Server/Session/Subscription/addEvent) */
 
-    corto_llAppend(this->batch, e);
+    corto_ll_append(this->batch, e);
 
 /* $end */
 }
@@ -64,7 +64,7 @@ corto_int16 ws_typeSerializer_constant(corto_walk_opt* s, corto_value *info, voi
 
     if (!data->dataType->constants) {
         data->dataType->constants = corto_alloc(sizeof(corto_ll));
-        *data->dataType->constants = corto_llNew();
+        *data->dataType->constants = corto_ll_new();
     }
     corto_stringListAppend(*data->dataType->constants, corto_idof(c));
     ws_data_addMetadata(data->session, data->msg, type);
@@ -75,7 +75,7 @@ corto_int16 ws_typeSerializer_element(corto_walk_opt* s, corto_value *info, void
     ws_typeSerializer_t *data = userData;
     corto_type type = corto_value_typeof(info);
     data->dataType->elementType = corto_alloc(sizeof(corto_object));
-    corto_setref(data->dataType->elementType, type);
+    corto_ptr_setref(data->dataType->elementType, type);
     ws_data_addMetadata(data->session, data->msg, type);
     return 0;
 }
@@ -96,7 +96,7 @@ static corto_walk_opt ws_typeSerializer(void) {
 }
 
 static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
-    corto_iter it = corto_llIter(data->data);
+    corto_iter it = corto_ll_iter(data->data);
     while (corto_iter_hasNext(&it)) {
         ws_dataType *dataType = corto_iter_next(&it);
         if (dataType->type == type) {
@@ -114,15 +114,15 @@ ws_dataType* ws_data_addMetadata(
     ws_dataType *dataType = ws_data_findDataType(msg, t);
     if (!dataType) {
         dataType = ws_dataTypeListInsertAlloc(msg->data);
-        corto_setref(&dataType->type, t);
+        corto_ptr_setref(&dataType->type, t);
     }
 
-    if (!corto_llHasObject(session->typesAligned, t)) {
+    if (!corto_ll_hasObject(session->typesAligned, t)) {
         corto_type kind = corto_typeof(t);
         corto_stringSet(dataType->kind, corto_fullpath(NULL, kind));
         corto_walk_opt s = ws_typeSerializer();
         ws_typeSerializer_t walkData = {session, msg, dataType, CORTO_BUFFER_INIT, 0};
-        corto_llInsert(session->typesAligned, t);
+        corto_ll_insert(session->typesAligned, t);
         corto_metawalk(&s, t, &walkData);
         if (walkData.count) {
             corto_buffer_appendstr(&walkData.memberBuff, "}");
@@ -146,14 +146,14 @@ void _ws_Server_Session_Subscription_processEvents(
     ws_Server_Session session = corto_parentof(corto_parentof(this));
 
     corto_debug("ws: prepare %d events for '%s' [%p]",
-        corto_llSize(this->batch),
+        corto_ll_size(this->batch),
         corto_fullpath(NULL, this), this);
 
     ws_data *msg = corto_declare(ws_data_o);
-    corto_setstr(&msg->sub, corto_idof(this));
+    corto_ptr_setstr(&msg->sub, corto_idof(this));
 
     corto_subscriberEvent *e;
-    while ((e = corto_llTakeFirst(this->batch))) {
+    while ((e = corto_ll_takeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;
         corto_object o = e->data.object;
         if (!o) {
@@ -169,19 +169,19 @@ void _ws_Server_Session_Subscription_processEvents(
         if (mask & (CORTO_ON_UPDATE|CORTO_ON_DEFINE)) {
             if (!dataType->set) {
                 dataType->set = corto_alloc(sizeof(corto_ll));
-                *dataType->set = corto_llNew();
+                *dataType->set = corto_ll_new();
             }
             dataObject = ws_dataObjectListAppendAlloc(*dataType->set);
         } else if (mask & CORTO_ON_DELETE) {
             if (!dataType->del) {
                 dataType->del = corto_alloc(sizeof(corto_ll));
-                *dataType->del = corto_llNew();
+                *dataType->del = corto_ll_new();
             }
             dataObject = ws_dataObjectListAppendAlloc(*dataType->del);   
         }
 
         if (dataObject) {
-            corto_setstr(&dataObject->id, e->data.id);
+            corto_ptr_setstr(&dataObject->id, e->data.id);
             if (strcmp(e->data.parent, ".")) {
                 corto_stringSet(dataObject->p, e->data.parent);
             }

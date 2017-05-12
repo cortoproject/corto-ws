@@ -51,7 +51,7 @@ static corto_int16 ws_serializer_primitive(
     case CORTO_INTEGER:
     case CORTO_FLOAT:
         if (!strcmp(str, "nan")) {
-            corto_setstr(&str, "null");
+            corto_ptr_setstr(&str, "null");
         }
         corto_buffer_append(data->buff, "%s", str);
         break;

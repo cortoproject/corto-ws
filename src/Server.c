@@ -22,13 +22,13 @@ static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_con
         if (!clientMsg->session || !(session = corto_lookup(sessions, clientMsg->session))) {
             char *sessionId = server_random(17);
             session = ws_Server_SessionCreateChild(sessions, sessionId);
-            corto_setref(&session->conn, c);
-            corto_setref(&c->udata, session);
+            corto_ptr_setref(&session->conn, c);
+            corto_ptr_setref(&c->udata, session);
             corto_trace("ws: connect: established session '%s'", sessionId);
             corto_dealloc(sessionId);
         } else {
-            corto_setref(&session->conn, c);
-            corto_setref(&c->udata, session);
+            corto_ptr_setref(&session->conn, c);
+            corto_ptr_setref(&c->udata, session);
             corto_trace("ws: connect: reestablished session '%s'", clientMsg->session);
             corto_release(session);
         }
@@ -60,16 +60,16 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
     } else {
     
         /* Query parameters */
-        corto_setstr(&sub->parent, clientMsg->parent);
-        corto_setstr(&sub->expr, clientMsg->expr);
-        corto_setstr(&corto_observer(sub)->type, clientMsg->type);
+        corto_ptr_setstr(&sub->parent, clientMsg->parent);
+        corto_ptr_setstr(&sub->expr, clientMsg->expr);
+        corto_ptr_setstr(&corto_observer(sub)->type, clientMsg->type);
         
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/
 
         /* Set dispatcher & instance to session and server */
-        corto_setref(&corto_observer(sub)->instance, session);
-        corto_setref(&corto_observer(sub)->dispatcher, this);
+        corto_ptr_setref(&corto_observer(sub)->instance, session);
+        corto_ptr_setref(&corto_observer(sub)->dispatcher, this);
 
         /* Enable subscriber */
         corto_observer(sub)->enabled = TRUE;
@@ -119,23 +119,23 @@ void _ws_Server_flush(
 {
 /* $begin(corto/ws/Server/flush) */
     corto_subscriberEvent *e;
-    corto_ll subs = corto_llNew();
+    corto_ll subs = corto_ll_new();
 
     /* Collect events */
     corto_lock(this);
-    corto_iter it = corto_llIter(this->events);
+    corto_iter it = corto_ll_iter(this->events);
     while (corto_iter_hasNext(&it)) {
         e = corto_iter_next(&it);
 
         /* Only take events for specified subscriber */
         if (!sub || (sub == e->subscriber)) {
-            corto_llIterRemove(&it);
+            corto_ll_iterRemove(&it);
 
             /* It is possible that the session has already been deleted */
             if (!corto_checkState(e->instance, CORTO_DESTRUCTED)) {
                 ws_Server_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
-                if (!corto_llHasObject(subs, e->subscriber)) {
-                    corto_llInsert(subs, e->subscriber);
+                if (!corto_ll_hasObject(subs, e->subscriber)) {
+                    corto_ll_insert(subs, e->subscriber);
                 }
             } else {
                 corto_assert(corto_release(e) == 0, "event is leaking");
@@ -145,13 +145,13 @@ void _ws_Server_flush(
     corto_unlock(this);
 
     /* Process events outside of lock */
-    it = corto_llIter(subs);
+    it = corto_ll_iter(subs);
     while (corto_iter_hasNext(&it)) {
         ws_Server_Session_Subscription sub = corto_iter_next(&it);
         ws_Server_Session_Subscription_processEvents(sub);
     }
 
-    corto_llFree(subs);
+    corto_ll_free(subs);
 
 /* $end */
 }
@@ -164,7 +164,7 @@ void _ws_Server_onClose(
     if (c->udata) {
         corto_trace("ws: close: disconnected session '%s'", corto_idof(c->udata));
         corto_delete(c->udata);
-        corto_setref(&c->udata, NULL);
+        corto_ptr_setref(&c->udata, NULL);
     }    
 
 /* $end */
@@ -213,7 +213,7 @@ void _ws_Server_onPoll(
 #define WS_QUEUE_THRESHOLD_SLEEP 10000000
 
 static corto_subscriberEvent* ws_Server_findEvent(ws_Server this, corto_subscriberEvent *e) {
-    corto_iter iter = corto_llIter(this->events);
+    corto_iter iter = corto_ll_iter(this->events);
     corto_subscriberEvent *e2;
     while ((corto_iter_hasNext(&iter))) {
         e2 = corto_iter_next(&iter);
@@ -253,13 +253,13 @@ void _ws_Server_post(
     /* Check if there is already another event in the queue for the same object.
      * if so, replace event with latest update. */
     if ((e2 = ws_Server_findEvent(this, corto_subscriberEvent(e)))) {
-        corto_llReplace(this->events, e2, e);
+        corto_ll_replace(this->events, e2, e);
         corto_assert(corto_release(e2) == 0, "event is leaking");
     } else {
-        corto_llAppend(this->events, e);
+        corto_ll_append(this->events, e);
     }
 
-    size = corto_llSize(this->events);
+    size = corto_ll_size(this->events);
     corto_unlock(this);
 
     /* If queue is getting big, slow down publisher */
@@ -278,12 +278,12 @@ void _ws_Server_purge(
 
     /* Purge events for specified subscriber */
     corto_lock(this);
-    corto_iter it = corto_llIter(this->events);
+    corto_iter it = corto_ll_iter(this->events);
     while (corto_iter_hasNext(&it)) {
         corto_subscriberEvent *e = corto_iter_next(&it);
         if (e->subscriber == sub) {
             corto_release(e);
-            corto_llIterRemove(&it);
+            corto_ll_iterRemove(&it);
         }
     }
     corto_unlock(this);

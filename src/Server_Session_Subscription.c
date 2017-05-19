@@ -165,7 +165,7 @@ void _ws_Server_Session_Subscription_processEvents(
         corto_type t = corto_typeof(o);
         ws_dataType *dataType = ws_data_addMetadata(session, msg, t);
 
-        corto_eventMask mask = corto_observerEvent(e)->event;
+        corto_eventMask mask = e->event;
         if (mask & (CORTO_ON_UPDATE|CORTO_ON_DEFINE)) {
             if (!dataType->set) {
                 dataType->set = corto_alloc(sizeof(corto_ll));

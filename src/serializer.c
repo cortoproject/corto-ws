@@ -149,13 +149,13 @@ static corto_walk_opt ws_serializer(void) {
     return result;
 }
 
-corto_string ws_serializer_serialize(corto_object o) {
+corto_string ws_serializer_serialize(corto_value *v) {
     corto_string result = NULL;
     corto_buffer buff = CORTO_BUFFER_INIT;
     ws_serializer_t walkData = {0, 0, &buff};
     corto_walk_opt s = ws_serializer();
 
-    if (corto_walk(&s, o, &walkData)) {
+    if (corto_walk_value(&s, v, &walkData)) {
         goto error;
     }
 

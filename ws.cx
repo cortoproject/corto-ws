@@ -86,6 +86,7 @@ container Server: Service, implements={dispatcher}::
     table Subscription: subscriber::
       id: string, key // Subscription id
       batch: list{event}, private|local // Events to be handled in next batch
+      int16 construct()
       void addEvent(event e)
       void processEvents()
 

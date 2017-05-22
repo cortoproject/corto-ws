@@ -22,7 +22,7 @@
 #include <corto/ws/c/_api.h>
 
 /* $body() */
-corto_string ws_serializer_serialize(corto_object o);
+corto_string ws_serializer_serialize(corto_value *v);
 corto_string ws_serializer_escape(corto_string str);
 /* $end */
 

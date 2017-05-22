@@ -19,6 +19,17 @@ void _ws_Server_Session_Subscription_addEvent(
 /* $end */
 }
 
+int16_t _ws_Server_Session_Subscription_construct(
+    ws_Server_Session_Subscription this)
+{
+/* $begin(corto/ws/Server/Session/Subscription/construct) */
+
+    corto_ptr_setstr(&corto_subscriber(this)->contentType, "binary/corto");
+
+    return corto_subscriber_construct(this);
+/* $end */
+}
+
 /* $header(corto/ws/Server/Session/Subscription/processEvents) */
 typedef struct ws_typeSerializer_t {
     ws_Server_Session session;
@@ -155,14 +166,14 @@ void _ws_Server_Session_Subscription_processEvents(
     corto_subscriberEvent *e;
     while ((e = corto_ll_takeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;
-        corto_object o = e->data.object;
-        if (!o) {
-            corto_warning("ws: event for '%s' does not have an object reference", e->data.id);
+        void *data = (void*)e->data.value;
+        if (!data) {
+            corto_warning("ws: event for '%s' does not set the value", e->data.id);
             corto_release(e);
             continue;
         }
 
-        corto_type t = corto_typeof(o);
+        corto_type t = corto_resolve(NULL, e->data.type);
         ws_dataType *dataType = ws_data_addMetadata(session, msg, t);
 
         corto_eventMask mask = e->event;
@@ -186,7 +197,8 @@ void _ws_Server_Session_Subscription_processEvents(
                 corto_stringSet(dataObject->p, e->data.parent);
             }
 
-            corto_string value = ws_serializer_serialize(e->data.object);
+            corto_value v = corto_value_mem((void*)e->data.value, t);
+            corto_string value = ws_serializer_serialize(&v);
             if (value) {
                 corto_stringSet(dataObject->v, NULL);
                 *(corto_string*)dataObject->v = value;
@@ -194,6 +206,8 @@ void _ws_Server_Session_Subscription_processEvents(
         }
 
         corto_assert(corto_release(e) == 0, "event is leaking");
+
+        corto_release(t);
     }
 
     corto_define(msg);

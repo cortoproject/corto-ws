@@ -60,9 +60,9 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
     } else {
     
         /* Query parameters */
-        corto_ptr_setstr(&sub->parent, clientMsg->parent);
-        corto_ptr_setstr(&sub->expr, clientMsg->expr);
-        corto_ptr_setstr(&corto_observer(sub)->type, clientMsg->type);
+        corto_ptr_setstr(&sub->query.from, clientMsg->parent);
+        corto_ptr_setstr(&sub->query.select, clientMsg->expr);
+        corto_ptr_setstr(&sub->query.type, clientMsg->type);
         
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/

@@ -23,12 +23,12 @@ static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_con
             char *sessionId = server_random(17);
             session = ws_Server_SessionCreateChild(sessions, sessionId);
             corto_ptr_setref(&session->conn, c);
-            corto_ptr_setref(&c->udata, session);
+            corto_ptr_setref(&c->ctx, session);
             corto_trace("ws: connect: established session '%s'", sessionId);
             corto_dealloc(sessionId);
         } else {
             corto_ptr_setref(&session->conn, c);
-            corto_ptr_setref(&c->udata, session);
+            corto_ptr_setref(&c->ctx, session);
             corto_trace("ws: connect: reestablished session '%s'", clientMsg->session);
             corto_release(session);
         }
@@ -41,7 +41,7 @@ static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_con
 
 static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *clientMsg) 
 {
-    ws_Server_Session session = ws_Server_Session(c->udata);
+    ws_Server_Session session = ws_Server_Session(c->ctx);
     corto_tablescope subscriptions = corto_lookupAssert(session, "Subscription", corto_tablescope_o);
     corto_object msg = NULL;
 
@@ -97,7 +97,7 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
 
 static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub *clientMsg) 
 {    
-    ws_Server_Session session = ws_Server_Session(c->udata);
+    ws_Server_Session session = ws_Server_Session(c->ctx);
     corto_tablescope subscriptions = corto_lookupAssert(session, "Subscription", corto_tablescope_o);
 
     /* If there is an existing subscription for the specified id, delete it. */
@@ -161,10 +161,10 @@ void _ws_Server_onClose(
     server_HTTP_Connection c)
 {
 /* $begin(corto/ws/Server/onClose) */
-    if (c->udata) {
-        corto_trace("ws: close: disconnected session '%s'", corto_idof(c->udata));
-        corto_delete(c->udata);
-        corto_ptr_setref(&c->udata, NULL);
+    if (c->ctx) {
+        corto_trace("ws: close: disconnected session '%s'", corto_idof(c->ctx));
+        corto_delete(c->ctx);
+        corto_ptr_setref(&c->ctx, NULL);
     }    
 
 /* $end */

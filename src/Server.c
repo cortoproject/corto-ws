@@ -11,7 +11,7 @@
 /* $header() */
 static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_connect *clientMsg) 
 {
-    corto_tablescope sessions = corto_lookupAssert(this, "Session", corto_tablescope_o);
+    corto_tableinstance sessions = corto_lookupAssert(this, "Session", corto_tableinstance_o);
     ws_Server_Session session = NULL;
     corto_object msg = NULL;
 
@@ -42,7 +42,7 @@ static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_con
 static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *clientMsg) 
 {
     ws_Server_Session session = ws_Server_Session(c->ctx);
-    corto_tablescope subscriptions = corto_lookupAssert(session, "Subscription", corto_tablescope_o);
+    corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
     corto_object msg = NULL;
 
     /* If there is an existing subscription for the specified id, delete it. */
@@ -98,7 +98,7 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
 static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub *clientMsg) 
 {    
     ws_Server_Session session = ws_Server_Session(c->ctx);
-    corto_tablescope subscriptions = corto_lookupAssert(session, "Subscription", corto_tablescope_o);
+    corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
 
     /* If there is an existing subscription for the specified id, delete it. */
     corto_subscriber sub = corto_lookup(subscriptions, clientMsg->id);

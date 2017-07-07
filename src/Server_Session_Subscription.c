@@ -1,36 +1,25 @@
-/* $CORTO_GENERATED
- *
- * Server_Session_Subscription.c
- *
- * Only code written between the begin and end tags will be preserved
- * when the file is regenerated.
- */
+/* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
-
-void _ws_Server_Session_Subscription_addEvent(
+void ws_Server_Session_Subscription_addEvent(
     ws_Server_Session_Subscription this,
     corto_event *e)
 {
-/* $begin(corto/ws/Server/Session/Subscription/addEvent) */
 
     corto_ll_append(this->batch, e);
 
-/* $end */
 }
 
-int16_t _ws_Server_Session_Subscription_construct(
+int16_t ws_Server_Session_Subscription_construct(
     ws_Server_Session_Subscription this)
 {
-/* $begin(corto/ws/Server/Session/Subscription/construct) */
 
     corto_ptr_setstr(&corto_subscriber(this)->contentType, "binary/corto");
 
     return corto_subscriber_construct(this);
-/* $end */
 }
 
-/* $header(corto/ws/Server/Session/Subscription/processEvents) */
+
 typedef struct ws_typeSerializer_t {
     ws_Server_Session session;
     ws_data *msg;
@@ -149,11 +138,10 @@ ws_dataType* ws_data_addMetadata(
     return dataType;
 }
 
-/* $end */
-void _ws_Server_Session_Subscription_processEvents(
+
+void ws_Server_Session_Subscription_processEvents(
     ws_Server_Session_Subscription this)
 {
-/* $begin(corto/ws/Server/Session/Subscription/processEvents) */
     ws_Server_Session session = corto_parentof(corto_parentof(this));
 
     corto_debug("ws: prepare %d events for '%s' [%p]",
@@ -216,5 +204,5 @@ void _ws_Server_Session_Subscription_processEvents(
 
     corto_delete(msg);
 
-/* $end */
 }
+

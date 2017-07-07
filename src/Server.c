@@ -1,14 +1,7 @@
-/* $CORTO_GENERATED
- *
- * Server.c
- *
- * Only code written between the begin and end tags will be preserved
- * when the file is regenerated.
- */
+/* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
 
-/* $header() */
 static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_connect *clientMsg) 
 {
     corto_tableinstance sessions = corto_lookupAssert(this, "Session", corto_tableinstance_o);
@@ -111,13 +104,11 @@ static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub
     corto_trace("ws: unsub: deleted subscriber '%s'", clientMsg->id);
 }
 
-/* $end */
 
-void _ws_Server_flush(
+void ws_Server_flush(
     ws_Server this,
     corto_subscriber sub)
 {
-/* $begin(corto/ws/Server/flush) */
     corto_subscriberEvent *e;
     corto_ll subs = corto_ll_new();
 
@@ -133,7 +124,7 @@ void _ws_Server_flush(
 
             /* It is possible that the session has already been deleted */
             if (!corto_checkState(e->instance, CORTO_DESTRUCTED)) {
-                ws_Server_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
+                safe_ws_Server_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
                 if (!corto_ll_hasObject(subs, e->subscriber)) {
                     corto_ll_insert(subs, e->subscriber);
                 }
@@ -153,29 +144,25 @@ void _ws_Server_flush(
 
     corto_ll_free(subs);
 
-/* $end */
 }
 
-void _ws_Server_onClose(
+void ws_Server_onClose(
     ws_Server this,
     server_HTTP_Connection c)
 {
-/* $begin(corto/ws/Server/onClose) */
     if (c->ctx) {
         corto_trace("ws: close: disconnected session '%s'", corto_idof(c->ctx));
         corto_delete(c->ctx);
         corto_ptr_setref(&c->ctx, NULL);
     }    
 
-/* $end */
 }
 
-void _ws_Server_onMessage(
+void ws_Server_onMessage(
     ws_Server this,
     server_HTTP_Connection c,
     corto_string msg)
 {
-/* $begin(corto/ws/Server/onMessage) */
     corto_object o = corto_createFromContent("text/json", msg);
     if (!o) {
         corto_error("ws: %s (malformed message)", corto_lasterr());
@@ -195,20 +182,17 @@ void _ws_Server_onMessage(
     return;
 error_type: 
     corto_error("ws: received invalid message type: '%s'", corto_fullpath(NULL, corto_typeof(o)));
-/* $end */
 }
 
-void _ws_Server_onPoll(
+void ws_Server_onPoll(
     ws_Server this)
 {
-/* $begin(corto/ws/Server/onPoll) */
 
     ws_Server_flush(this, NULL);
 
-/* $end */
 }
 
-/* $header(corto/ws/Server/post) */
+
 #define WS_QUEUE_THRESHOLD 10000
 #define WS_QUEUE_THRESHOLD_SLEEP 10000000
 
@@ -226,12 +210,11 @@ static corto_subscriberEvent* ws_Server_findEvent(ws_Server this, corto_subscrib
     }
     return NULL;
 }
-/* $end */
-void _ws_Server_post(
+
+void ws_Server_post(
     ws_Server this,
     corto_event *e)
 {
-/* $begin(corto/ws/Server/post) */
     corto_uint32 size = 0;
     corto_subscriberEvent *e2;
 
@@ -267,14 +250,12 @@ void _ws_Server_post(
         corto_sleep(0, WS_QUEUE_THRESHOLD_SLEEP);
     }
 
-/* $end */
 }
 
-void _ws_Server_purge(
+void ws_Server_purge(
     ws_Server this,
     corto_subscriber sub)
 {
-/* $begin(corto/ws/Server/purge) */
 
     /* Purge events for specified subscriber */
     corto_lock(this);
@@ -288,5 +269,5 @@ void _ws_Server_purge(
     }
     corto_unlock(this);
 
-/* $end */
 }
+

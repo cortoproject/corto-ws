@@ -98,6 +98,8 @@ static corto_int16 ws_serializer_reference(
     corto_buffer_append(data->buff, "\"%s\"", str);
     corto_dealloc(str);
     data->count ++;
+    data->valueCount ++;
+    
     return 0;
 }
 

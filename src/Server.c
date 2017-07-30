@@ -64,8 +64,8 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
         corto_ptr_setref(&corto_observer(sub)->instance, session);
         corto_ptr_setref(&corto_observer(sub)->dispatcher, this);
 
-        /* Enable subscriber */
-        corto_observer(sub)->enabled = TRUE;
+        /* Enable subscriber so subok is sent before alignment data */
+        corto_observer(sub)->enabled = FALSE;
 
         if (corto_define(sub)) {
             msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
@@ -82,8 +82,13 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
     ws_Server_Session_send(session, msg);
     corto_delete(msg);
 
-    /* Flush aligned data for quick response time */
     if (sub) {
+        /* Enable subscriber, aligns data */
+        if (corto_subscriber_subscribe(sub, session)) {
+            corto_error("ws: failed to enable subscriber: %s", corto_lasterr());
+        }
+
+        /* Flush aligned data for quick response time */
         ws_Server_flush(this, sub);
     }
 }

@@ -41,7 +41,7 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
     if (data->count) {
         corto_buffer_appendstr(&data->memberBuff, ",");
     } else {
-         corto_buffer_appendstr(&data->memberBuff, "{");   
+        corto_buffer_appendstr(&data->memberBuff, "{"); 
     }
 
     corto_id typeId;
@@ -73,10 +73,13 @@ corto_int16 ws_typeSerializer_constant(corto_walk_opt* s, corto_value *info, voi
 
 corto_int16 ws_typeSerializer_element(corto_walk_opt* s, corto_value *info, void *userData) {
     ws_typeSerializer_t *data = userData;
-    corto_type type = corto_value_typeof(info);
-    data->dataType->elementType = corto_alloc(sizeof(corto_object));
-    corto_ptr_setref(data->dataType->elementType, type);
-    ws_data_addMetadata(data->session, data->msg, type);
+    corto_collection type = corto_collection(corto_value_typeof(info));
+    data->dataType->elementType = corto_calloc(sizeof(char*));
+    {
+            corto_id elementTypeId;
+            corto_ptr_setstr(data->dataType->elementType, corto_fullpath(elementTypeId, type->elementType));
+    }
+    ws_data_addMetadata(data->session, data->msg, type->elementType);
     return 0;
 }
 
@@ -90,17 +93,21 @@ static corto_walk_opt ws_typeSerializer(void) {
     result.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;
     result.metaprogram[CORTO_MEMBER] = ws_typeSerializer_member;
     result.metaprogram[CORTO_CONSTANT] = ws_typeSerializer_constant;
-    result.metaprogram[CORTO_ELEMENT] = ws_typeSerializer_element;
+    result.program[CORTO_COLLECTION] = ws_typeSerializer_element;
 
     return result;
 }
 
 static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
-    corto_iter it = corto_ll_iter(data->data);
-    while (corto_iter_hasNext(&it)) {
-        ws_dataType *dataType = corto_iter_next(&it);
-        if (dataType->typeReference == type) {
-            return dataType;
+    if (corto_ll_size(data->data)) {
+        corto_id typeId;
+        corto_fullpath(typeId, type);    
+        corto_iter it = corto_ll_iter(data->data);
+        while (corto_iter_hasNext(&it)) {
+            ws_dataType *dataType = corto_iter_next(&it);
+            if (!strcmp(dataType->type, typeId)) {
+                return dataType;
+            }
         }
     }
     return NULL;
@@ -110,12 +117,13 @@ ws_dataType* ws_data_addMetadata(
     ws_Server_Session session, 
     ws_data *msg, 
     corto_type t) 
-{ 
+{
+    bool appendType = false;
     ws_dataType *dataType = ws_data_findDataType(msg, t);
     if (!dataType) {
-        dataType = ws_dataTypeListInsertAlloc(msg->data);
+        dataType = corto_calloc(sizeof(ws_dataType));
         corto_ptr_setstr(&dataType->type, corto_fullpath(NULL, t));
-        corto_ptr_setref(&dataType->typeReference, t);
+        appendType = true;
     }
 
     if (!corto_ll_hasObject(session->typesAligned, t)) {
@@ -134,6 +142,10 @@ ws_dataType* ws_data_addMetadata(
         if (t->reference) {
             corto_boolSet(dataType->reference, TRUE);
         }
+    }
+
+    if (appendType) {
+        corto_ll_append(msg->data, dataType);
     }
 
     return dataType;

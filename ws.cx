@@ -51,10 +51,9 @@ struct dataType:/
   reference: bool, optional
   members: dataMembers, optional
   constants: list{string}, optional
-  elementType: type, optional
+  elementType: string, optional
   set: list{dataObject}, optional
   del: list{dataObject}, optional
-  typeReference: lang/type, private
 
 struct data:/
   sub: string

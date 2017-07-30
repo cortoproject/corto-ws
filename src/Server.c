@@ -39,7 +39,7 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
     corto_object msg = NULL;
 
     /* If there is an existing subscription for the specified id, delete it. */
-    corto_subscriber sub = corto_lookup(subscriptions, clientMsg->id);
+    Server_Session_Subscription sub = corto_lookup(subscriptions, clientMsg->id);
     if (sub) {
         corto_delete(sub);
         corto_release(sub);
@@ -53,9 +53,9 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
     } else {
     
         /* Query parameters */
-        corto_ptr_setstr(&sub->query.from, clientMsg->parent);
-        corto_ptr_setstr(&sub->query.select, clientMsg->expr);
-        corto_ptr_setstr(&sub->query.type, clientMsg->type);
+        corto_ptr_setstr(&sub->super.query.from, clientMsg->parent);
+        corto_ptr_setstr(&sub->super.query.select, clientMsg->expr);
+        corto_ptr_setstr(&sub->super.query.type, clientMsg->type);
         
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/
@@ -66,6 +66,9 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
 
         /* Enable subscriber so subok is sent before alignment data */
         corto_observer(sub)->enabled = FALSE;
+
+        /* Set if subscription requests summary data */
+        sub->summary = clientMsg->summary;
 
         if (corto_define(sub)) {
             msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
@@ -89,7 +92,7 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
         }
 
         /* Flush aligned data for quick response time */
-        ws_Server_flush(this, sub);
+        ws_Server_flush(this, &sub->super);
     }
 }
 

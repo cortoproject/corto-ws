@@ -1,18 +1,34 @@
 
 #include <corto/ws/ws.h>
 
+#define WS_MAX_SUMMARY_STRING (40)
+
 typedef struct ws_serializer_t {
     int count;
     int valueCount;
     corto_buffer *buff;
+    bool summary;
 } ws_serializer_t;
 
-corto_string ws_serializer_escape(corto_string str) {
+corto_string ws_serializer_escape(char *str, size_t *length_out) {
     int length = stresc(NULL, 0, str);
     corto_string result = corto_alloc(length + 1);
     stresc(result, length, str);
     result[length] = '\0';
+
+    if (length_out) {
+        *length_out = length;
+    }
+
     return result;
+}
+
+static corto_string ws_serializer_truncate(corto_string str) {
+    str[WS_MAX_SUMMARY_STRING] = '\0';
+    str[WS_MAX_SUMMARY_STRING - 1] = '.';
+    str[WS_MAX_SUMMARY_STRING - 2] = '.';
+    str[WS_MAX_SUMMARY_STRING - 3] = '.';
+    return str;
 }
 
 static corto_int16 ws_serializer_primitive(
@@ -55,15 +71,20 @@ static corto_int16 ws_serializer_primitive(
         }
         corto_buffer_append(data->buff, "%s", str);
         break;
-    case CORTO_TEXT:
+    case CORTO_TEXT: {
+        size_t length = 0;
         if (!*(corto_string*)ptr) {
             corto_buffer_appendstr(data->buff, "null");
             str = NULL;
             break;
         }
         prev = str;
-        str = ws_serializer_escape(str);
+        str = ws_serializer_escape(str, &length);
+        if (data->summary && length > WS_MAX_SUMMARY_STRING) {
+            str = ws_serializer_truncate(str);
+        }
         corto_dealloc(prev);
+    }
     case CORTO_BITMASK:
     case CORTO_ENUM:
     case CORTO_CHARACTER:
@@ -91,7 +112,7 @@ static corto_int16 ws_serializer_reference(
     corto_object o = *(corto_object*)corto_value_ptrof(info);
     corto_id id;
     corto_fullpath(id, o);
-    char *str = ws_serializer_escape(id);
+    char *str = ws_serializer_escape(id, NULL);
     if (data->count) {
         corto_buffer_appendstr(data->buff, ",");
     }
@@ -109,7 +130,12 @@ static corto_int16 ws_serializer_object(
     void *userData) 
 {
     ws_serializer_t *data = userData;
-    ws_serializer_t privateData = {.count = 0, .valueCount = 0, .buff = data->buff};
+    ws_serializer_t privateData = {
+        .count = 0, 
+        .valueCount = 0, 
+        .buff = data->buff, 
+        .summary = data->summary
+    };
     corto_type t = corto_value_typeof(info);
 
     if (data->count) corto_buffer_appendstr(data->buff, ",");
@@ -120,8 +146,16 @@ static corto_int16 ws_serializer_object(
             goto error;
         }
     } else {
-        if (corto_walk_elements(s, info, &privateData)) {
-            goto error;
+        if (!data->summary) {
+            if (corto_walk_elements(s, info, &privateData)) {
+                goto error;
+            }
+        } else {
+            unsigned int count = corto_ptr_count(corto_value_ptrof(info), t);
+            if (count) {
+                corto_buffer_append(data->buff, "%u", count);
+                privateData.valueCount = 1;
+            }
         }
     }
 
@@ -151,10 +185,10 @@ static corto_walk_opt ws_serializer(void) {
     return result;
 }
 
-corto_string ws_serializer_serialize(corto_value *v) {
+corto_string ws_serializer_serialize(corto_value *v, bool summary) {
     corto_string result = NULL;
     corto_buffer buff = CORTO_BUFFER_INIT;
-    ws_serializer_t walkData = {0, 0, &buff};
+    ws_serializer_t walkData = {0, 0, &buff, summary};
     corto_walk_opt s = ws_serializer();
 
     if (corto_walk_value(&s, v, &walkData)) {

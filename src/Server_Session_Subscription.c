@@ -5,17 +5,13 @@ void ws_Server_Session_Subscription_addEvent(
     ws_Server_Session_Subscription this,
     corto_event *e)
 {
-
     corto_ll_append(this->batch, e);
-
 }
 
 int16_t ws_Server_Session_Subscription_construct(
     ws_Server_Session_Subscription this)
 {
-
     corto_ptr_setstr(&corto_subscriber(this)->contentType, "binary/corto");
-
     return corto_subscriber_construct(this);
 }
 
@@ -46,7 +42,7 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
 
     corto_id typeId;
     corto_fullpath(typeId, type);
-    corto_string escaped = ws_serializer_escape(typeId);
+    corto_string escaped = ws_serializer_escape(typeId, NULL);
     corto_buffer_append(&data->memberBuff, "\"%s\":\"%s\"", corto_idof(m), escaped);
     corto_dealloc(escaped);
 
@@ -199,7 +195,7 @@ void ws_Server_Session_Subscription_processEvents(
             }
 
             corto_value v = corto_value_mem((void*)e->data.value, t);
-            corto_string value = ws_serializer_serialize(&v);
+            corto_string value = ws_serializer_serialize(&v, this->summary);
             if (value) {
                 corto_stringSet(dataObject->v, NULL);
                 *(corto_string*)dataObject->v = value;

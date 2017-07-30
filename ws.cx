@@ -22,6 +22,7 @@ struct sub:/
   type: string
   offset: uint64
   limit: uint64
+  summary: bool // Do not send content of collections, shorten strings
 
 // Confirm subscription (server -> client)
 struct subok:/
@@ -85,6 +86,7 @@ container Server: Service, implements={dispatcher}:/
     // Subscriptions for session
     table Subscription: subscriber:/
       id: string, key // Subscription id
+      summary: bool, readonly // Is client requesting summary data
       batch: list{event}, private|local // Events to be handled in next batch
       int16 construct()
       void addEvent(event e)

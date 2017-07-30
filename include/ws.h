@@ -23,8 +23,8 @@
 #include <corto/ws/c/_api.h>
 
 /* $body() */
-corto_string ws_serializer_serialize(corto_value *v);
-corto_string ws_serializer_escape(corto_string str);
+corto_string ws_serializer_serialize(corto_value *v, bool summary);
+corto_string ws_serializer_escape(char *str, size_t *length_out);
 /* $end */
 
 #endif

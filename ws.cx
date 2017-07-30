@@ -2,20 +2,20 @@
 #import corto/web/server
 
 // Setup new connection (client -> server)
-struct connect::
+struct connect:/
   session: string
   version: string
 
 // Connection established (server -> client)
-struct connected::
+struct connected:/
   session: string
 
 // Connection failed (server -> client)
-struct failed::
+struct failed:/
   version: string
 
 // Subscribe for data (client -> server)
-struct sub::
+struct sub:/
   id: string
   parent: string
   expr: string
@@ -24,29 +24,29 @@ struct sub::
   limit: uint64
 
 // Confirm subscription (server -> client)
-struct subok::
+struct subok:/
   id: string
 
 // Failed to create subscription (server -> client)
-struct subfail::
+struct subfail:/
   id: string
   error: string
 
 // Unsubscribe for data (client -> server)
-struct unsub::
+struct unsub:/
   id: string
 
 // Data message (server -> client)
 verbatim dataMembers: "text/json"
 
-struct dataObject::
+struct dataObject:/
   id: string
   p: string, optional
   o: object, optional
   v: verbatim{"text/json"}, optional
 
-struct dataType::
-  type: type
+struct dataType:/
+  type: string
   kind: string, optional
   reference: bool, optional
   members: dataMembers, optional
@@ -54,14 +54,15 @@ struct dataType::
   elementType: type, optional
   set: list{dataObject}, optional
   del: list{dataObject}, optional
+  typeReference: lang/type, private
 
-struct data::
+struct data:/
   sub: string
   data: list{dataType}
 
 
 // WS Server
-container Server: Service, implements={dispatcher}::
+container Server: Service, implements={dispatcher}:/
   
   void post(event e) // Post event to event queue
   void purge(subscriber sub) // Purge events from queue for a subscriber
@@ -73,7 +74,7 @@ container Server: Service, implements={dispatcher}::
   events: list{event}, private|local // Event queue
 
   // Server sessions
-  table Session::
+  table Session:/
     id: string, key // Session id
 
     // Private members
@@ -83,7 +84,7 @@ container Server: Service, implements={dispatcher}::
     void send(object msg)
 
     // Subscriptions for session
-    table Subscription: subscriber::
+    table Subscription: subscriber:/
       id: string, key // Subscription id
       batch: list{event}, private|local // Events to be handled in next batch
       int16 construct()

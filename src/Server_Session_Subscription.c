@@ -99,7 +99,7 @@ static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
     corto_iter it = corto_ll_iter(data->data);
     while (corto_iter_hasNext(&it)) {
         ws_dataType *dataType = corto_iter_next(&it);
-        if (dataType->type == type) {
+        if (dataType->typeReference == type) {
             return dataType;
         }
     }
@@ -114,7 +114,8 @@ ws_dataType* ws_data_addMetadata(
     ws_dataType *dataType = ws_data_findDataType(msg, t);
     if (!dataType) {
         dataType = ws_dataTypeListInsertAlloc(msg->data);
-        corto_ptr_setref(&dataType->type, t);
+        corto_ptr_setstr(&dataType->type, corto_fullpath(NULL, t));
+        corto_ptr_setref(&dataType->typeReference, t);
     }
 
     if (!corto_ll_hasObject(session->typesAligned, t)) {

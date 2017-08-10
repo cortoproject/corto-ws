@@ -194,11 +194,14 @@ void ws_Server_Session_Subscription_processEvents(
                 corto_stringSet(dataObject->p, e->data.parent);
             }
 
-            corto_value v = corto_value_mem((void*)e->data.value, t);
-            corto_string value = ws_serializer_serialize(&v, this->summary);
-            if (value) {
-                corto_stringSet(dataObject->v, NULL);
-                *(corto_string*)dataObject->v = value;
+            /* Don't serialize for DELETE */
+            if (!(mask & CORTO_ON_DELETE)) {
+                corto_value v = corto_value_mem((void*)e->data.value, t);
+                corto_string value = ws_serializer_serialize(&v, this->summary);
+                if (value) {
+                    corto_stringSet(dataObject->v, NULL);
+                    *(corto_string*)dataObject->v = value;
+                }
             }
         }
 

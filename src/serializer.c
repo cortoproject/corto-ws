@@ -152,8 +152,8 @@ static corto_int16 ws_serializer_object(
             }
         } else {
             unsigned int count = corto_ptr_count(corto_value_ptrof(info), t);
+            corto_buffer_append(data->buff, "%u", count);
             if (count) {
-                corto_buffer_append(data->buff, "%u", count);
                 privateData.valueCount = 1;
             }
         }

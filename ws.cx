@@ -1,5 +1,5 @@
-#package corto/ws
-#import corto/web/server
+in package corto/ws
+use corto/web/server
 
 // Setup new connection (client -> server)
 struct connect:/
@@ -60,6 +60,14 @@ struct data:/
   sub: string
   data: list{dataType}
 
+// Delete message (client -> server)
+struct delete:/
+  id: string
+
+// Update message (client -> server)
+struct update:/
+  id: string
+  v: verbatim{"text/json"}, optional
 
 // WS Server
 container Server: Service, implements={dispatcher}:/

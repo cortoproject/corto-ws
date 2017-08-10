@@ -2,7 +2,11 @@
 
 #include <corto/ws/ws.h>
 
-static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_connect *clientMsg) 
+static 
+void ws_Server_onConnect(
+    ws_Server this, 
+    server_HTTP_Connection c, 
+    ws_connect *clientMsg) 
 {
     corto_tableinstance sessions = corto_lookupAssert(this, "Session", corto_tableinstance_o);
     ws_Server_Session session = NULL;
@@ -32,7 +36,11 @@ static void ws_Server_onConnect(ws_Server this, server_HTTP_Connection c, ws_con
     corto_delete(msg);
 }
 
-static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *clientMsg) 
+static 
+void ws_Server_onSub(
+    ws_Server this, 
+    server_HTTP_Connection c, 
+    ws_sub *clientMsg) 
 {
     ws_Server_Session session = ws_Server_Session(c->ctx);
     corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
@@ -96,7 +104,11 @@ static void ws_Server_onSub(ws_Server this, server_HTTP_Connection c, ws_sub *cl
     }
 }
 
-static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub *clientMsg) 
+static 
+void ws_Server_onUnsub(
+    ws_Server this, 
+    server_HTTP_Connection c, 
+    ws_unsub *clientMsg) 
 {    
     ws_Server_Session session = ws_Server_Session(c->ctx);
     corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
@@ -112,6 +124,41 @@ static void ws_Server_onUnsub(ws_Server this, server_HTTP_Connection c, ws_unsub
     corto_trace("ws: unsub: deleted subscriber '%s'", clientMsg->id);
 }
 
+static 
+void ws_Server_onUpdate(
+    ws_Server this, 
+    server_HTTP_Connection c, 
+    ws_update *updateMsg) 
+{
+    if (corto_publish(
+        CORTO_ON_UPDATE,
+        updateMsg->id,
+        NULL,
+        "text/json",
+        updateMsg->v ? *updateMsg->v : NULL
+    )) {
+        corto_error("ws: delete: failed to update '%s'", updateMsg->id);
+    }
+    return;
+}
+
+static 
+void ws_Server_onDelete(
+    ws_Server this, 
+    server_HTTP_Connection c, 
+    ws_delete *deleteMsg) 
+{
+    if (corto_publish(
+        CORTO_ON_DELETE,
+        deleteMsg->id,
+        NULL,
+        NULL,
+        0
+    )) {
+        corto_error("ws: delete: failed to delete '%s'", deleteMsg->id);
+    }
+    return;
+}
 
 void ws_Server_flush(
     ws_Server this,
@@ -172,7 +219,7 @@ void ws_Server_onMessage(
     corto_string msg)
 {
     corto_object o = corto_createFromContent("text/json", msg);
-    if (!o) {
+    if (!o || !corto_checkState(o, CORTO_DEFINED)) {
         corto_error("ws: %s (malformed message)", corto_lasterr());
         return;
     }
@@ -184,6 +231,8 @@ void ws_Server_onMessage(
     if (msgType == ws_connect_o) ws_Server_onConnect(this, c, ws_connect(o));
     else if (msgType == ws_sub_o) ws_Server_onSub(this, c, ws_sub(o));
     else if (msgType == ws_unsub_o) ws_Server_onUnsub(this, c, ws_unsub(o));
+    else if (msgType == ws_update_o) ws_Server_onUpdate(this, c, ws_update(o));
+    else if (msgType == ws_delete_o) ws_Server_onDelete(this, c, ws_delete(o));
     else goto error_type;
     corto_delete(o);
 

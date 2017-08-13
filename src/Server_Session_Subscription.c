@@ -32,7 +32,10 @@ ws_dataType* ws_data_addMetadata(
 corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void *userData) {
     ws_typeSerializer_t *data = userData;
     corto_type type = corto_value_typeof(info);
-    corto_member m = info->is.member.t;
+    corto_member m = NULL;
+    if (info->kind == CORTO_MEMBER) {
+        m = info->is.member.t;
+    }
 
     if (data->count) {
         corto_buffer_appendstr(&data->memberBuff, ",");
@@ -43,7 +46,11 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
     corto_id typeId;
     corto_fullpath(typeId, type);
     corto_string escaped = ws_serializer_escape(typeId, NULL);
-    corto_buffer_append(&data->memberBuff, "\"%s\":\"%s\"", corto_idof(m), escaped);
+    corto_buffer_append(
+        &data->memberBuff, 
+        "\"%s\":\"%s\"", 
+        m ? corto_idof(m) : "super", 
+        escaped);
     corto_dealloc(escaped);
 
     data->count ++;
@@ -87,6 +94,7 @@ static corto_walk_opt ws_typeSerializer(void) {
     result.accessKind = CORTO_NOT;
     result.aliasAction = CORTO_WALK_ALIAS_IGNORE;
     result.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;
+    result.metaprogram[CORTO_BASE] = ws_typeSerializer_member;    
     result.metaprogram[CORTO_MEMBER] = ws_typeSerializer_member;
     result.metaprogram[CORTO_CONSTANT] = ws_typeSerializer_constant;
     result.program[CORTO_COLLECTION] = ws_typeSerializer_element;

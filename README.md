@@ -236,13 +236,13 @@ The meat of the protocol is in the `data` message, which contains the metadata a
   }
 }
 ```
-The `type` property in this message is the type identifier. This type identifier will be used in future messages to indicate that objects of this type are going to be received. The `kind` member specifies what kind of type is described. The `reference` member specifies whether this is a reference type, and the `members` member specifies the members for this composite type.
+The `type` property in this message is the type identifier. This type identifier will be used in future messages to indicate that objects of this type are going to be received. The `kind` member specifies what kind of type is described. The `members` member specifies the members for this composite type.
 
 Each value for `kind` comes with different members. For example, the `members` property is only relevant for `composite` types. These members will be described in more detail in the "simple typesystem" corto specification.
 
 The `set` member contains an array of object identifiers and new object values.
 
-A subsequent message with `Point` objects does not contain the metadata:
+A subsequent message with `Point` objects does not include the metadata, because by now the client should have it:
 ```json
 {
   "type":"data",
@@ -283,7 +283,7 @@ The protocol also supports nested types. Here is a message that contains a type 
         "set":[
           {"id":"line_1","v":[[10,20],[30,40]]},
           {"id":"line_2","v":[[50,60],[70,80]]},
-          {"id":"line_3","v":[[90,100],[110,120]]},
+          {"id":"line_3","v":[[90,100],[110,120]]}
         ]
       }
     ]
@@ -302,7 +302,7 @@ A subsequent message with Line objects looks like this:
     "set":[
       {"id":"line_1","v":[[11,21],[31,41]]},
       {"id":"line_2","v":[[51,61],[71,81]]},
-      {"id":"line_3","v":[[91,101],[111,121]]},
+      {"id":"line_3","v":[[91,101],[111,121]]}
     ]
   }
 }
@@ -327,7 +327,7 @@ A single message may contain objects of multiple types. This goes for both messa
         "set":[
           {"id":"line_1","v":[[10,20],[30,40]]},
           {"id":"line_2","v":[[50,60],[70,80]]},
-          {"id":"line_3","v":[[90,100],[110,120]]},
+          {"id":"line_3","v":[[90,100],[110,120]]}
         ]
       }
     ]

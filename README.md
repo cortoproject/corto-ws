@@ -116,7 +116,9 @@ Result:
 ```json
 [
     {"id": "MyCar/Wheel/FrontLeft", "value": {...}},
-    {"id": "YourCar/Wheel/FrontLeft", "value": {...}}
+    {"id": "MyCar/Wheel/BackLeft", "value": {...}},
+    {"id": "YourCar/Wheel/FrontLeft", "value": {...}},
+    {"id": "YourCar/Wheel/BackLeft", "value": {...}}
 ]
 ```
 The query format will be extended in the future with features that allow specifying a subset of members, filter on member values, specify time windows and allow for map/reduce operations amongst others.

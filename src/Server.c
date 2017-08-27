@@ -131,7 +131,7 @@ void ws_Server_onUpdate(
     ws_update *updateMsg) 
 {
     if (corto_publish(
-        CORTO_ON_UPDATE,
+        CORTO_UPDATE,
         updateMsg->id,
         NULL,
         "text/json",
@@ -149,7 +149,7 @@ void ws_Server_onDelete(
     ws_delete *deleteMsg) 
 {
     if (corto_publish(
-        CORTO_ON_DELETE,
+        CORTO_DELETE,
         deleteMsg->id,
         NULL,
         NULL,

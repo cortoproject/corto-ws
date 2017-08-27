@@ -182,13 +182,13 @@ void ws_Server_Session_Subscription_processEvents(
         ws_dataType *dataType = ws_data_addMetadata(session, msg, t);
 
         corto_eventMask mask = e->event;
-        if (mask & (CORTO_ON_UPDATE|CORTO_ON_DEFINE)) {
+        if (mask & (CORTO_UPDATE|CORTO_DEFINE)) {
             if (!dataType->set) {
                 dataType->set = corto_alloc(sizeof(corto_ll));
                 *dataType->set = corto_ll_new();
             }
             dataObject = ws_dataObjectListAppendAlloc(*dataType->set);
-        } else if (mask & CORTO_ON_DELETE) {
+        } else if (mask & CORTO_DELETE) {
             if (!dataType->del) {
                 dataType->del = corto_alloc(sizeof(corto_ll));
                 *dataType->del = corto_ll_new();
@@ -203,7 +203,7 @@ void ws_Server_Session_Subscription_processEvents(
             }
 
             /* Don't serialize for DELETE */
-            if (!(mask & CORTO_ON_DELETE)) {
+            if (!(mask & CORTO_DELETE)) {
                 corto_value v = corto_value_mem((void*)e->data.value, t);
                 corto_string value = ws_serializer_serialize(&v, this->summary);
                 if (value) {

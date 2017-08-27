@@ -178,7 +178,7 @@ void ws_Server_flush(
             corto_ll_iterRemove(&it);
 
             /* It is possible that the session has already been deleted */
-            if (!corto_checkState(e->instance, CORTO_DESTRUCTED)) {
+            if (!corto_checkState(e->instance, CORTO_DELETED)) {
                 safe_ws_Server_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
                 if (!corto_ll_hasObject(subs, e->subscriber)) {
                     corto_ll_insert(subs, e->subscriber);
@@ -219,7 +219,7 @@ void ws_Server_onMessage(
     corto_string msg)
 {
     corto_object o = corto_createFromContent("text/json", msg);
-    if (!o || !corto_checkState(o, CORTO_DEFINED)) {
+    if (!o || !corto_checkState(o, CORTO_VALID)) {
         corto_error("ws: %s (malformed message)", corto_lasterr());
         return;
     }
@@ -282,8 +282,8 @@ void ws_Server_post(
         observer = ((corto_subscriberEvent*)e)->subscriber,
         instance = ((corto_subscriberEvent*)e)->instance;
 
-    if (corto_checkState(observer, CORTO_DESTRUCTED) || 
-        (instance && corto_checkState(instance, CORTO_DESTRUCTED))) 
+    if (corto_checkState(observer, CORTO_DELETED) || 
+        (instance && corto_checkState(instance, CORTO_DELETED))) 
     {
         corto_release(e);
         corto_unlock(this);

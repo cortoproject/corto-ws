@@ -172,13 +172,13 @@ void ws_Server_Session_Subscription_processEvents(
     while ((e = corto_ll_takeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;
         void *data = (void*)e->data.value;
-        if (!data) {
-            corto_warning("ws: event for '%s' does not set the value", e->data.id);
-            corto_release(e);
-            continue;
-        }
 
         corto_type t = corto_resolve(NULL, e->data.type);
+        if (!t) {
+            corto_error("ws: unresolved type '%s'", e->data.type);
+            goto error;
+        }
+
         ws_dataType *dataType = ws_data_addMetadata(session, msg, t);
 
         corto_eventMask mask = e->event;
@@ -203,8 +203,8 @@ void ws_Server_Session_Subscription_processEvents(
             }
 
             /* Don't serialize for DELETE */
-            if (!(mask & CORTO_DELETE)) {
-                corto_value v = corto_value_mem((void*)e->data.value, t);
+            if (data && !(mask & CORTO_DELETE)) {
+                corto_value v = corto_value_mem((void*)data, t);
                 corto_string value = ws_serializer_serialize(&v, this->summary);
                 if (value) {
                     corto_stringSet(dataObject->v, NULL);
@@ -222,7 +222,7 @@ void ws_Server_Session_Subscription_processEvents(
 
     ws_Server_Session_send(session, msg);
 
+error:
     corto_delete(msg);
-
 }
 

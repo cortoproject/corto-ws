@@ -14,19 +14,19 @@ void ws_Server_onConnect(
 
     if (clientMsg->version && strcmp(clientMsg->version, "1.0")) {
         msg = ws_failedCreate("1.0");
-        corto_warning("ws: connect: wrong version '%s'", clientMsg->version);
+        corto_warning("connect: wrong version '%s'", clientMsg->version);
     } else {
         if (!clientMsg->session || !(session = corto_lookup(sessions, clientMsg->session))) {
             char *sessionId = server_random(17);
             session = ws_Server_SessionCreateChild(sessions, sessionId);
             corto_ptr_setref(&session->conn, c);
             corto_ptr_setref(&c->ctx, session);
-            corto_trace("ws: connect: established session '%s'", sessionId);
+            corto_trace("connect: established session '%s'", sessionId);
             corto_dealloc(sessionId);
         } else {
             corto_ptr_setref(&session->conn, c);
             corto_ptr_setref(&c->ctx, session);
-            corto_trace("ws: connect: reestablished session '%s'", clientMsg->session);
+            corto_trace("connect: reestablished session '%s'", clientMsg->session);
             corto_release(session);
         }
         msg = ws_connectedCreate(corto_idof(session));
@@ -57,7 +57,7 @@ void ws_Server_onSub(
     sub = corto_declareChild(subscriptions, clientMsg->id, ws_Server_Session_Subscription_o);
     if (!sub) {
         msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
-        corto_error("ws: creation of subscriber failed: %s", corto_lasterr());
+        corto_error("creation of subscriber failed: %s", corto_lasterr());
     } else {
     
         /* Query parameters */
@@ -80,12 +80,12 @@ void ws_Server_onSub(
 
         if (corto_define(sub)) {
             msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
-            corto_error("ws: failed to create subscriber: %s", corto_lasterr());
+            corto_error("failed to create subscriber: %s", corto_lasterr());
             corto_delete(sub);
             sub = NULL;
         } else {
             msg = ws_subokCreate(corto_idof(sub));
-            corto_trace("ws: sub: subscriber '%s' listening to '%s', '%s'", 
+            corto_trace("sub: subscriber '%s' listening to '%s', '%s'", 
                 clientMsg->id, clientMsg->parent, clientMsg->expr);
         }
     }
@@ -121,7 +121,7 @@ void ws_Server_onUnsub(
         corto_release(sub);
     }
 
-    corto_trace("ws: unsub: deleted subscriber '%s'", clientMsg->id);
+    corto_trace("unsub: deleted subscriber '%s'", clientMsg->id);
 }
 
 static 
@@ -137,7 +137,7 @@ void ws_Server_onUpdate(
         "text/json",
         updateMsg->v ? *updateMsg->v : NULL
     )) {
-        corto_error("ws: delete: failed to update '%s'", updateMsg->id);
+        corto_error("update: failed to update '%s'", updateMsg->id);
     }
     return;
 }
@@ -155,7 +155,7 @@ void ws_Server_onDelete(
         NULL,
         0
     )) {
-        corto_error("ws: delete: failed to delete '%s'", deleteMsg->id);
+        corto_error("delete: failed to delete '%s'", deleteMsg->id);
     }
     return;
 }
@@ -206,7 +206,7 @@ void ws_Server_onClose(
     server_HTTP_Connection c)
 {
     if (c->ctx) {
-        corto_trace("ws: close: disconnected session '%s'", corto_idof(c->ctx));
+        corto_trace("close: disconnected session '%s'", corto_idof(c->ctx));
         corto_delete(c->ctx);
         corto_ptr_setref(&c->ctx, NULL);
     }    
@@ -218,10 +218,11 @@ void ws_Server_onMessage(
     server_HTTP_Connection c,
     corto_string msg)
 {
+    corto_component_push("ws");
     corto_object o = corto_createFromContent("text/json", msg);
     if (!o || !corto_checkState(o, CORTO_VALID)) {
-        corto_error("ws: %s (malformed message)", corto_lasterr());
-        return;
+        corto_error("%s (malformed message)", corto_lasterr());
+        goto error;
     }
 
     if (corto_typeof(corto_typeof(o)) != corto_type(corto_struct_o)) goto error_type;
@@ -236,9 +237,13 @@ void ws_Server_onMessage(
     else goto error_type;
     corto_delete(o);
 
+    corto_component_pop();
     return;
 error_type: 
-    corto_error("ws: received invalid message type: '%s'", corto_fullpath(NULL, corto_typeof(o)));
+    corto_error("received invalid message type: '%s'", corto_fullpath(NULL, corto_typeof(o)));
+error:
+    corto_component_pop();
+    return;
 }
 
 void ws_Server_onPoll(

@@ -1,5 +1,5 @@
 in package corto/ws
-use corto/web/server
+use corto/httpserver
 
 // Setup new connection (client -> server)
 struct connect:/
@@ -43,7 +43,7 @@ verbatim dataMembers: "text/json"
 struct dataObject:/
   id: string
   p: string, optional
-  o: object, optional
+  o: string, optional
   v: verbatim{"text/json"}, optional
 
 struct dataType:/

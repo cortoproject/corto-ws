@@ -11,7 +11,7 @@
 #include <corto/corto.h>
 #include <corto/ws/_project.h>
 #include <corto/c/c.h>
-#include <corto/web/server/server.h>
+#include <corto/httpserver/httpserver.h>
 
 /* $header() */
 /* Enter additional code here. */

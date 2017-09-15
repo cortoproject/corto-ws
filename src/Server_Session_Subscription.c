@@ -175,7 +175,7 @@ void ws_Server_Session_Subscription_processEvents(
 
         corto_type t = corto_resolve(NULL, e->data.type);
         if (!t) {
-            corto_error("ws: unresolved type '%s'", e->data.type);
+            corto_error("ws: unresolved type '%s' for object '%s/%s'", e->data.type, e->data.parent, e->data.id);
             goto error;
         }
 
@@ -200,6 +200,12 @@ void ws_Server_Session_Subscription_processEvents(
             corto_ptr_setstr(&dataObject->id, e->data.id);
             if (strcmp(e->data.parent, ".")) {
                 corto_stringSet(dataObject->p, e->data.parent);
+            }
+
+            /* Set owner if != NULL */
+            if (e->data.owner) {
+                corto_id ownerId;
+                corto_stringSet(dataObject->o, corto_fullpath(ownerId, e->data.owner));
             }
 
             /* Don't serialize for DELETE */

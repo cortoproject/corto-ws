@@ -2,6 +2,9 @@
     "id": "corto/ws",
     "type": "package",
     "value": {
+        "author": "Sander Mertens",
+        "version": "1.0.0",
+        "description": "Corto WebSocket service",        
         "dependencies": ["corto/httpserver", "corto/ws/c"]
     }
 }

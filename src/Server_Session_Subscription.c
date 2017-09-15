@@ -175,7 +175,16 @@ void ws_Server_Session_Subscription_processEvents(
 
         corto_type t = corto_resolve(NULL, e->data.type);
         if (!t) {
-            corto_error("ws: unresolved type '%s' for object '%s/%s'", e->data.type, e->data.parent, e->data.id);
+            corto_error("unresolved type '%s' for object '%s/%s'", e->data.type, e->data.parent, e->data.id);
+            goto error;
+        }
+
+        if (!corto_instanceof(corto_type_o, t)) {
+            corto_error("object '%s' resolved by '%s' as type for '%s/%s' is not a type",
+                corto_fullpath(NULL, t),
+                e->data.type,
+                e->data.parent,
+                e->data.id);
             goto error;
         }
 

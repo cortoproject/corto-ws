@@ -1,15 +1,15 @@
 /* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
-void ws_Server_Session_Subscription_addEvent(
-    ws_Server_Session_Subscription this,
+void ws_service_Session_Subscription_addEvent(
+    ws_service_Session_Subscription this,
     corto_event *e)
 {
     corto_ll_append(this->batch, e);
 }
 
-int16_t ws_Server_Session_Subscription_construct(
-    ws_Server_Session_Subscription this)
+int16_t ws_service_Session_Subscription_construct(
+    ws_service_Session_Subscription this)
 {
     corto_ptr_setstr(&corto_subscriber(this)->contentType, "binary/corto");
     return corto_subscriber_construct(this);
@@ -17,7 +17,7 @@ int16_t ws_Server_Session_Subscription_construct(
 
 
 typedef struct ws_typeSerializer_t {
-    ws_Server_Session session;
+    ws_service_Session session;
     ws_data *msg;
     ws_dataType *dataType;
     corto_buffer memberBuff;
@@ -25,7 +25,7 @@ typedef struct ws_typeSerializer_t {
 } ws_typeSerializer_t;
 
 ws_dataType* ws_data_addMetadata(
-    ws_Server_Session session, 
+    ws_service_Session session, 
     ws_data *msg, 
     corto_type t);
 
@@ -118,7 +118,7 @@ static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
 }
 
 ws_dataType* ws_data_addMetadata(
-    ws_Server_Session session, 
+    ws_service_Session session, 
     ws_data *msg, 
     corto_type t) 
 {
@@ -156,10 +156,10 @@ ws_dataType* ws_data_addMetadata(
 }
 
 
-void ws_Server_Session_Subscription_processEvents(
-    ws_Server_Session_Subscription this)
+void ws_service_Session_Subscription_processEvents(
+    ws_service_Session_Subscription this)
 {
-    ws_Server_Session session = corto_parentof(corto_parentof(this));
+    ws_service_Session session = corto_parentof(corto_parentof(this));
 
     corto_debug("ws: prepare %d events for '%s' [%p]",
         corto_ll_size(this->batch),
@@ -235,7 +235,7 @@ void ws_Server_Session_Subscription_processEvents(
 
     corto_define(msg);
 
-    ws_Server_Session_send(session, msg);
+    ws_service_Session_send(session, msg);
 
 error:
     corto_delete(msg);

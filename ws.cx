@@ -70,7 +70,7 @@ struct update:/
   v: verbatim{"text/json"}, optional
 
 // WS Server
-container Server: Service, implements={dispatcher}:/
+container service: httpserver/Service, implements={dispatcher}:/
   
   void post(event e) // Post event to event queue
   void purge(subscriber sub) // Purge events from queue for a subscriber

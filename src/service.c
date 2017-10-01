@@ -2,13 +2,13 @@
 
 #include <corto/ws/ws.h>
 static 
-void ws_Server_onConnect(
-    ws_Server this, 
+void ws_service_onConnect(
+    ws_service this, 
     httpserver_HTTP_Connection c, 
     ws_connect *clientMsg) 
 {
     corto_tableinstance sessions = corto_lookupAssert(this, "Session", corto_tableinstance_o);
-    ws_Server_Session session = NULL;
+    ws_service_Session session = NULL;
     corto_object msg = NULL;
 
     if (clientMsg->version && strcmp(clientMsg->version, "1.0")) {
@@ -17,7 +17,7 @@ void ws_Server_onConnect(
     } else {
         if (!clientMsg->session || !(session = corto_lookup(sessions, clientMsg->session))) {
             char *sessionId = httpserver_random(17);
-            session = ws_Server_SessionCreateChild(sessions, sessionId);
+            session = ws_service_SessionCreateChild(sessions, sessionId);
             corto_ptr_setref(&session->conn, c);
             corto_ptr_setref(&c->ctx, session);
             corto_trace("connect: established session '%s'", sessionId);
@@ -32,29 +32,29 @@ void ws_Server_onConnect(
         msg = ws_connectedCreate(corto_idof(session));
     }
 
-    ws_Server_Session_send(session, msg);
+    ws_service_Session_send(session, msg);
     corto_delete(msg);
 }
 
 static 
-void ws_Server_onSub(
-    ws_Server this, 
+void ws_service_onSub(
+    ws_service this, 
     httpserver_HTTP_Connection c, 
     ws_sub *clientMsg) 
 {
-    ws_Server_Session session = ws_Server_Session(c->ctx);
+    ws_service_Session session = ws_service_Session(c->ctx);
     corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
     corto_object msg = NULL;
 
     /* If there is an existing subscription for the specified id, delete it. */
-    Server_Session_Subscription sub = corto_lookup(subscriptions, clientMsg->id);
+    service_Session_Subscription sub = corto_lookup(subscriptions, clientMsg->id);
     if (sub) {
         corto_delete(sub);
         corto_release(sub);
     }
 
     /* Create new subscription */
-    sub = corto_declareChild(subscriptions, clientMsg->id, ws_Server_Session_Subscription_o);
+    sub = corto_declareChild(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
     if (!sub) {
         msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
         corto_error("creation of subscriber failed: %s", corto_lasterr());
@@ -87,7 +87,7 @@ void ws_Server_onSub(
 
     }
 
-    ws_Server_Session_send(session, msg);
+    ws_service_Session_send(session, msg);
     corto_delete(msg);
     if (sub) {
         /* Enable subscriber, aligns data */
@@ -96,24 +96,24 @@ void ws_Server_onSub(
         }
 
         /* Flush aligned data for quick response time */
-        ws_Server_flush(this, &sub->super);
+        ws_service_flush(this, &sub->super);
     }
 
 }
 
 static 
-void ws_Server_onUnsub(
-    ws_Server this, 
+void ws_service_onUnsub(
+    ws_service this, 
     httpserver_HTTP_Connection c, 
     ws_unsub *clientMsg) 
 {    
-    ws_Server_Session session = ws_Server_Session(c->ctx);
+    ws_service_Session session = ws_service_Session(c->ctx);
     corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
 
     /* If there is an existing subscription for the specified id, delete it. */
     corto_subscriber sub = corto_lookup(subscriptions, clientMsg->id);
     if (sub) {
-        ws_Server_purge(this, sub);
+        ws_service_purge(this, sub);
         corto_delete(sub);
         corto_release(sub);
     }
@@ -122,8 +122,8 @@ void ws_Server_onUnsub(
 }
 
 static 
-void ws_Server_onUpdate(
-    ws_Server this, 
+void ws_service_onUpdate(
+    ws_service this, 
     httpserver_HTTP_Connection c, 
     ws_update *updateMsg) 
 {
@@ -141,8 +141,8 @@ void ws_Server_onUpdate(
 }
 
 static 
-void ws_Server_onDelete(
-    ws_Server this, 
+void ws_service_onDelete(
+    ws_service this, 
     httpserver_HTTP_Connection c, 
     ws_delete *deleteMsg) 
 {
@@ -159,8 +159,8 @@ void ws_Server_onDelete(
     return;
 }
 
-void ws_Server_flush(
-    ws_Server this,
+void ws_service_flush(
+    ws_service this,
     corto_subscriber sub)
 {
     corto_subscriberEvent *e;
@@ -178,7 +178,7 @@ void ws_Server_flush(
 
             /* It is possible that the session has already been deleted */
             if (!corto_checkState(e->instance, CORTO_DELETED)) {
-                safe_ws_Server_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
+                safe_ws_service_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
                 if (!corto_ll_hasObject(subs, e->subscriber)) {
                     corto_ll_insert(subs, e->subscriber);
                 }
@@ -195,15 +195,15 @@ void ws_Server_flush(
     /* Process events outside of lock */
     it = corto_ll_iter(subs);
     while (corto_iter_hasNext(&it)) {
-        ws_Server_Session_Subscription sub = corto_iter_next(&it);
-        ws_Server_Session_Subscription_processEvents(sub);
+        ws_service_Session_Subscription sub = corto_iter_next(&it);
+        ws_service_Session_Subscription_processEvents(sub);
     }
 
     corto_ll_free(subs);
 }
 
-void ws_Server_onClose(
-    ws_Server this,
+void ws_service_onClose(
+    ws_service this,
     httpserver_HTTP_Connection c)
 {
     if (c->ctx) {
@@ -213,8 +213,8 @@ void ws_Server_onClose(
     }    
 }
 
-void ws_Server_onMessage(
-    ws_Server this,
+void ws_service_onMessage(
+    ws_service this,
     httpserver_HTTP_Connection c,
     corto_string msg)
 {
@@ -227,11 +227,11 @@ void ws_Server_onMessage(
 
     if (corto_typeof(corto_typeof(o)) != corto_type(corto_struct_o)) goto error_type;
     corto_struct msgType = corto_struct(corto_typeof(o));
-    if (msgType == ws_connect_o) ws_Server_onConnect(this, c, ws_connect(o));
-    else if (msgType == ws_sub_o) ws_Server_onSub(this, c, ws_sub(o));
-    else if (msgType == ws_unsub_o) ws_Server_onUnsub(this, c, ws_unsub(o));
-    else if (msgType == ws_update_o) ws_Server_onUpdate(this, c, ws_update(o));
-    else if (msgType == ws_delete_o) ws_Server_onDelete(this, c, ws_delete(o));
+    if (msgType == ws_connect_o) ws_service_onConnect(this, c, ws_connect(o));
+    else if (msgType == ws_sub_o) ws_service_onSub(this, c, ws_sub(o));
+    else if (msgType == ws_unsub_o) ws_service_onUnsub(this, c, ws_unsub(o));
+    else if (msgType == ws_update_o) ws_service_onUpdate(this, c, ws_update(o));
+    else if (msgType == ws_delete_o) ws_service_onDelete(this, c, ws_delete(o));
     else goto error_type;
     corto_delete(o);
     corto_component_pop();
@@ -243,17 +243,17 @@ error:
     return;
 }
 
-void ws_Server_onPoll(
-    ws_Server this)
+void ws_service_onPoll(
+    ws_service this)
 {
 
-    ws_Server_flush(this, NULL);
+    ws_service_flush(this, NULL);
 
 }
 
 #define WS_QUEUE_THRESHOLD 10000
 #define WS_QUEUE_THRESHOLD_SLEEP 10000000
-static corto_subscriberEvent* ws_Server_findEvent(ws_Server this, corto_subscriberEvent *e) {
+static corto_subscriberEvent* ws_service_findEvent(ws_service this, corto_subscriberEvent *e) {
     corto_iter iter = corto_ll_iter(this->events);
     corto_subscriberEvent *e2;
     while ((corto_iter_hasNext(&iter))) {
@@ -270,8 +270,8 @@ static corto_subscriberEvent* ws_Server_findEvent(ws_Server this, corto_subscrib
     return NULL;
 }
 
-void ws_Server_post(
-    ws_Server this,
+void ws_service_post(
+    ws_service this,
     corto_event *e)
 {
     corto_uint32 size = 0;
@@ -294,7 +294,7 @@ void ws_Server_post(
 
     /* Check if there is already another event in the queue for the same object.
      * if so, replace event with latest update. */
-    if ((e2 = ws_Server_findEvent(this, corto_subscriberEvent(e)))) {
+    if ((e2 = ws_service_findEvent(this, corto_subscriberEvent(e)))) {
         corto_ll_replace(this->events, e2, e);
         corto_assert(corto_release(e2) == 0, "event is leaking");
     } else {
@@ -310,8 +310,8 @@ void ws_Server_post(
 
 }
 
-void ws_Server_purge(
-    ws_Server this,
+void ws_service_purge(
+    ws_service this,
     corto_subscriber sub)
 {
 

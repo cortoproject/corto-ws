@@ -1,8 +1,8 @@
 /* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
-void ws_Server_Session_send(
-    ws_Server_Session this,
+void ws_service_Session_send(
+    ws_service_Session this,
     corto_object msg)
 {
     corto_string msgJson = corto_object_contentof(msg, "text/json");

@@ -1,5 +1,5 @@
 # ws
-The corto/ws project is a reference implementation of a new IoT websocket protocol (also called `corto/ws`) that is optimized for efficient usage of bandwidth while supporting dynamic, realtime and responsive web applications. The protocol is a work in progress and contributions are welcome!
+The corto/ws project is a reference implementation of a new IoT websocket protocol (called `TreeWS`) that is optimized for efficient usage of bandwidth while supporting dynamic, realtime and responsive web applications. The protocol is a work in progress and contributions are welcome!
 
 ## A quick introduction
 Typically, websockets protocols send JSON data that looks like this:

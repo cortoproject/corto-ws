@@ -31,7 +31,7 @@ This metadata is a lot of overhead to send with every message however, so the pr
 
 An additional advantage of sending metadata is that web clients become type-aware. A web app could for example use metadata to automatically generate a form that validates input based on the type description.
 
-We built a web application that fully relies on this websocket data (`cortoproject/admin`) to visualize any data made available through the protocol. Therefore, anyone that implements this protocol will be able to use this web app (and there will be more in the future!).
+We built a web application that fully relies on this websocket data (`cortoproject/ui`) to visualize any data made available through the protocol. Therefore, anyone that implements this protocol will be able to use this web app (and there will be more in the future!).
 
 ## Overview of the query format
 The protocol employs another strategy to reduce bandwidth usage, which is that it allows a client to precisely specify which data it is interested in. The server uses this information to only send matching data to the client. The query language has been designed for hierarchical datasets. Hierarchies partition data in a natural way that scales well, even with very large datasets.

@@ -103,7 +103,7 @@ static corto_walk_opt ws_typeSerializer(void) {
 }
 
 static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
-    if (corto_ll_size(data->data)) {
+    if (corto_ll_count(data->data)) {
         corto_id typeId;
         corto_fullpath(typeId, type);    
         corto_iter it = corto_ll_iter(data->data);
@@ -162,7 +162,7 @@ void ws_service_Session_Subscription_processEvents(
     ws_service_Session session = corto_parentof(corto_parentof(this));
 
     corto_debug("ws: prepare %d events for '%s' [%p]",
-        corto_ll_size(this->batch),
+        corto_ll_count(this->batch),
         corto_fullpath(NULL, this), this);
 
     ws_data *msg = corto_declare(ws_data_o);

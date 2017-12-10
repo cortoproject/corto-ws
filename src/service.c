@@ -1,11 +1,16 @@
 /* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
-static 
+
+#define corto_lookupAssert(parent, id, type) \
+    corto(parent, id, type, NULL, NULL, NULL, -1,\
+        CORTO_DO_ASSERT_SUCCESS | CORTO_DO_FORCE_TYPE);
+
+static
 void ws_service_onConnect(
-    ws_service this, 
-    httpserver_HTTP_Connection c, 
-    ws_connect *clientMsg) 
+    ws_service this,
+    httpserver_HTTP_Connection c,
+    ws_connect *clientMsg)
 {
     corto_tableinstance sessions = corto_lookupAssert(this, "Session", corto_tableinstance_o);
     ws_service_Session session = NULL;
@@ -36,11 +41,11 @@ void ws_service_onConnect(
     corto_delete(msg);
 }
 
-static 
+static
 void ws_service_onSub(
-    ws_service this, 
-    httpserver_HTTP_Connection c, 
-    ws_sub *clientMsg) 
+    ws_service this,
+    httpserver_HTTP_Connection c,
+    ws_sub *clientMsg)
 {
     ws_service_Session session = ws_service_Session(c->ctx);
     corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
@@ -59,12 +64,12 @@ void ws_service_onSub(
         msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
         corto_error("creation of subscriber failed: %s", corto_lasterr());
     } else {
-    
+
         /* Query parameters */
         corto_ptr_setstr(&sub->super.query.from, clientMsg->parent);
         corto_ptr_setstr(&sub->super.query.select, clientMsg->expr);
         corto_ptr_setstr(&sub->super.query.type, clientMsg->type);
-        
+
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/
         /* Set dispatcher & instance to session and server */
@@ -81,7 +86,7 @@ void ws_service_onSub(
             sub = NULL;
         } else {
             msg = ws_subokCreate(corto_idof(sub));
-            corto_trace("sub: subscriber '%s' listening to '%s', '%s'", 
+            corto_trace("sub: subscriber '%s' listening to '%s', '%s'",
                 clientMsg->id, clientMsg->parent, clientMsg->expr);
         }
 
@@ -101,12 +106,12 @@ void ws_service_onSub(
 
 }
 
-static 
+static
 void ws_service_onUnsub(
-    ws_service this, 
-    httpserver_HTTP_Connection c, 
-    ws_unsub *clientMsg) 
-{    
+    ws_service this,
+    httpserver_HTTP_Connection c,
+    ws_unsub *clientMsg)
+{
     ws_service_Session session = ws_service_Session(c->ctx);
     corto_tableinstance subscriptions = corto_lookupAssert(session, "Subscription", corto_tableinstance_o);
 
@@ -121,11 +126,11 @@ void ws_service_onUnsub(
     corto_trace("unsub: deleted subscriber '%s'", clientMsg->id);
 }
 
-static 
+static
 void ws_service_onUpdate(
-    ws_service this, 
-    httpserver_HTTP_Connection c, 
-    ws_update *updateMsg) 
+    ws_service this,
+    httpserver_HTTP_Connection c,
+    ws_update *updateMsg)
 {
     if (corto_publish(
         CORTO_UPDATE,
@@ -140,11 +145,11 @@ void ws_service_onUpdate(
     return;
 }
 
-static 
+static
 void ws_service_onDelete(
-    ws_service this, 
-    httpserver_HTTP_Connection c, 
-    ws_delete *deleteMsg) 
+    ws_service this,
+    httpserver_HTTP_Connection c,
+    ws_delete *deleteMsg)
 {
     if (corto_publish(
         CORTO_DELETE,
@@ -210,7 +215,7 @@ void ws_service_onClose(
         corto_trace("close: disconnected session '%s'", corto_idof(c->ctx));
         corto_delete(c->ctx);
         corto_ptr_setref(&c->ctx, NULL);
-    }    
+    }
 }
 
 void ws_service_onMessage(
@@ -218,7 +223,7 @@ void ws_service_onMessage(
     httpserver_HTTP_Connection c,
     corto_string msg)
 {
-    corto_component_push("ws");
+    corto_log_push("ws");
     corto_object o = corto_createFromContent("text/json", msg);
     if (!o || !corto_checkState(o, CORTO_VALID)) {
         corto_error("%s (malformed message)", corto_lasterr());
@@ -234,12 +239,12 @@ void ws_service_onMessage(
     else if (msgType == ws_delete_o) ws_service_onDelete(this, c, ws_delete(o));
     else goto error_type;
     corto_delete(o);
-    corto_component_pop();
+    corto_log_pop();
     return;
-error_type: 
+error_type:
     corto_error("received invalid message type: '%s'", corto_fullpath(NULL, corto_typeof(o)));
 error:
-    corto_component_pop();
+    corto_log_pop();
     return;
 }
 
@@ -280,12 +285,12 @@ void ws_service_post(
     corto_lock(this);
 
     /* Ignore events from destructed sessions or subscribers */
-    corto_object 
+    corto_object
         observer = ((corto_subscriberEvent*)e)->subscriber,
         instance = ((corto_subscriberEvent*)e)->instance;
 
-    if (corto_checkState(observer, CORTO_DELETED) || 
-        (instance && corto_checkState(instance, CORTO_DELETED))) 
+    if (corto_checkState(observer, CORTO_DELETED) ||
+        (instance && corto_checkState(instance, CORTO_DELETED)))
     {
         corto_release(e);
         corto_unlock(this);
@@ -301,7 +306,7 @@ void ws_service_post(
         corto_ll_append(this->events, e);
     }
 
-    size = corto_ll_size(this->events);
+    size = corto_ll_count(this->events);
     corto_unlock(this);
     /* If queue is getting big, slow down publisher */
     if (size > WS_QUEUE_THRESHOLD) {
@@ -329,4 +334,3 @@ void ws_service_purge(
 
     corto_unlock(this);
 }
-

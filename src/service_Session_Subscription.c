@@ -165,7 +165,7 @@ void ws_service_Session_Subscription_processEvents(
         corto_ll_count(this->batch),
         corto_fullpath(NULL, this), this);
 
-    ws_data *msg = corto_declare(ws_data_o);
+    ws_data *msg = corto_declare(NULL, NULL, ws_data_o);
     corto_ptr_setstr(&msg->sub, corto_idof(this));
 
     corto_subscriberEvent *e;

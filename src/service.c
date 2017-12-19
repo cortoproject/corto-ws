@@ -1,11 +1,9 @@
 /* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
-
 #define corto_lookupAssert(parent, id, type) \
     corto(parent, id, type, NULL, NULL, NULL, -1,\
         CORTO_DO_ASSERT_SUCCESS | CORTO_DO_FORCE_TYPE);
-
 static
 void ws_service_onConnect(
     ws_service this,
@@ -59,17 +57,15 @@ void ws_service_onSub(
     }
 
     /* Create new subscription */
-    sub = corto_declareChild(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
+    sub = corto_declare(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
     if (!sub) {
         msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
         corto_error("creation of subscriber failed: %s", corto_lasterr());
     } else {
-
         /* Query parameters */
         corto_ptr_setstr(&sub->super.query.from, clientMsg->parent);
         corto_ptr_setstr(&sub->super.query.select, clientMsg->expr);
         corto_ptr_setstr(&sub->super.query.type, clientMsg->type);
-
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/
         /* Set dispatcher & instance to session and server */
@@ -182,7 +178,7 @@ void ws_service_flush(
             corto_ll_iterRemove(&it);
 
             /* It is possible that the session has already been deleted */
-            if (!corto_checkState(e->instance, CORTO_DELETED)) {
+            if (!corto_check_state(e->instance, CORTO_DELETED)) {
                 safe_ws_service_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
                 if (!corto_ll_hasObject(subs, e->subscriber)) {
                     corto_ll_insert(subs, e->subscriber);
@@ -216,16 +212,17 @@ void ws_service_onClose(
         corto_delete(c->ctx);
         corto_ptr_setref(&c->ctx, NULL);
     }
+
 }
 
 void ws_service_onMessage(
     ws_service this,
     httpserver_HTTP_Connection c,
-    corto_string msg)
+    const char *msg)
 {
     corto_log_push("ws");
     corto_object o = corto_createFromContent("text/json", msg);
-    if (!o || !corto_checkState(o, CORTO_VALID)) {
+    if (!o || !corto_check_state(o, CORTO_VALID)) {
         corto_error("%s (malformed message)", corto_lasterr());
         goto error;
     }
@@ -289,8 +286,8 @@ void ws_service_post(
         observer = ((corto_subscriberEvent*)e)->subscriber,
         instance = ((corto_subscriberEvent*)e)->instance;
 
-    if (corto_checkState(observer, CORTO_DELETED) ||
-        (instance && corto_checkState(instance, CORTO_DELETED)))
+    if (corto_check_state(observer, CORTO_DELETED) ||
+        (instance && corto_check_state(instance, CORTO_DELETED)))
     {
         corto_release(e);
         corto_unlock(this);
@@ -334,3 +331,4 @@ void ws_service_purge(
 
     corto_unlock(this);
 }
+

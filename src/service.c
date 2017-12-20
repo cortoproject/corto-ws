@@ -1,9 +1,9 @@
 /* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
-#define corto_lookupAssert(parent, id, type) \
-    corto(parent, id, type, NULL, NULL, NULL, -1,\
-        CORTO_DO_ASSERT_SUCCESS | CORTO_DO_FORCE_TYPE);
+#define corto_lookupAssert(p, i, t) \
+    corto(CORTO_LOOKUP|CORTO_ASSERT_SUCCESS|CORTO_FORCE_TYPE, {.parent = p, .id = i, .type = t})
+
 static
 void ws_service_onConnect(
     ws_service this,
@@ -221,9 +221,10 @@ void ws_service_onMessage(
     const char *msg)
 {
     corto_log_push("ws");
-    corto_object o = corto_createFromContent("text/json", msg);
-    if (!o || !corto_check_state(o, CORTO_VALID)) {
-        corto_error("%s (malformed message)", corto_lasterr());
+    
+    corto_object o = NULL;
+    if (corto_deserialize(&o, "text/json", msg)) {
+        corto_throw("malformed message: %s", msg);
         goto error;
     }
 
@@ -331,4 +332,3 @@ void ws_service_purge(
 
     corto_unlock(this);
 }
-

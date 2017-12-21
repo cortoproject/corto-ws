@@ -21,13 +21,13 @@ void ws_service_onConnect(
         if (!clientMsg->session || !(session = corto_lookup(sessions, clientMsg->session))) {
             char *sessionId = httpserver_random(17);
             session = ws_service_SessionCreateChild(sessions, sessionId);
-            corto_ptr_setref(&session->conn, c);
-            corto_ptr_setref(&c->ctx, session);
+            corto_set_ref(&session->conn, c);
+            corto_set_ref(&c->ctx, session);
             corto_trace("connect: established session '%s'", sessionId);
             corto_dealloc(sessionId);
         } else {
-            corto_ptr_setref(&session->conn, c);
-            corto_ptr_setref(&c->ctx, session);
+            corto_set_ref(&session->conn, c);
+            corto_set_ref(&c->ctx, session);
             corto_trace("connect: reestablished session '%s'", clientMsg->session);
             corto_release(session);
         }
@@ -63,14 +63,14 @@ void ws_service_onSub(
         corto_error("creation of subscriber failed: %s", corto_lasterr());
     } else {
         /* Query parameters */
-        corto_ptr_setstr(&sub->super.query.from, clientMsg->parent);
-        corto_ptr_setstr(&sub->super.query.select, clientMsg->expr);
-        corto_ptr_setstr(&sub->super.query.type, clientMsg->type);
+        corto_set_str(&sub->super.query.from, clientMsg->parent);
+        corto_set_str(&sub->super.query.select, clientMsg->expr);
+        corto_set_str(&sub->super.query.type, clientMsg->type);
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/
         /* Set dispatcher & instance to session and server */
-        corto_ptr_setref(&corto_observer(sub)->instance, session);
-        corto_ptr_setref(&corto_observer(sub)->dispatcher, this);
+        corto_set_ref(&corto_observer(sub)->instance, session);
+        corto_set_ref(&corto_observer(sub)->dispatcher, this);
         /* Enable subscriber so subok is sent before alignment data */
         corto_observer(sub)->enabled = FALSE;
         /* Set if subscription requests summary data */
@@ -210,7 +210,7 @@ void ws_service_onClose(
     if (c->ctx) {
         corto_trace("close: disconnected session '%s'", corto_idof(c->ctx));
         corto_delete(c->ctx);
-        corto_ptr_setref(&c->ctx, NULL);
+        corto_set_ref(&c->ctx, NULL);
     }
 
 }

@@ -11,7 +11,7 @@ void ws_service_Session_Subscription_addEvent(
 int16_t ws_service_Session_Subscription_construct(
     ws_service_Session_Subscription this)
 {
-    corto_ptr_setstr(&corto_subscriber(this)->contentType, "binary/corto");
+    corto_set_str(&corto_subscriber(this)->contentType, "binary/corto");
     return corto_subscriber_construct(this);
 }
 
@@ -80,7 +80,7 @@ corto_int16 ws_typeSerializer_element(corto_walk_opt* s, corto_value *info, void
     data->dataType->elementType = corto_calloc(sizeof(char*));
     {
             corto_id elementTypeId;
-            corto_ptr_setstr(data->dataType->elementType, corto_fullpath(elementTypeId, type->elementType));
+            corto_set_str(data->dataType->elementType, corto_fullpath(elementTypeId, type->elementType));
     }
     ws_data_addMetadata(data->session, data->msg, type->elementType);
     return 0;
@@ -126,7 +126,7 @@ ws_dataType* ws_data_addMetadata(
     ws_dataType *dataType = ws_data_findDataType(msg, t);
     if (!dataType) {
         dataType = corto_calloc(sizeof(ws_dataType));
-        corto_ptr_setstr(&dataType->type, corto_fullpath(NULL, t));
+        corto_set_str(&dataType->type, corto_fullpath(NULL, t));
         appendType = true;
     }
 
@@ -166,7 +166,7 @@ void ws_service_Session_Subscription_processEvents(
         corto_fullpath(NULL, this), this);
 
     ws_data *msg = corto_declare(NULL, NULL, ws_data_o);
-    corto_ptr_setstr(&msg->sub, corto_idof(this));
+    corto_set_str(&msg->sub, corto_idof(this));
 
     corto_subscriberEvent *e;
     while ((e = corto_ll_takeFirst(this->batch))) {
@@ -206,7 +206,7 @@ void ws_service_Session_Subscription_processEvents(
         }
 
         if (dataObject) {
-            corto_ptr_setstr(&dataObject->id, e->data.id);
+            corto_set_str(&dataObject->id, e->data.id);
             if (strcmp(e->data.parent, ".")) {
                 corto_stringSet(dataObject->p, e->data.parent);
             }

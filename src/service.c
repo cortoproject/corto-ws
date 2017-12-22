@@ -1,10 +1,8 @@
 /* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
-
-#define corto_lookupAssert(parent, id, type) \
-    corto(parent, id, type, NULL, NULL, NULL, -1,\
-        CORTO_DO_ASSERT_SUCCESS | CORTO_DO_FORCE_TYPE);
+#define corto_lookupAssert(p, i, t) \
+    corto(CORTO_LOOKUP|CORTO_ASSERT_SUCCESS|CORTO_FORCE_TYPE, {.parent = p, .id = i, .type = t})
 
 static
 void ws_service_onConnect(
@@ -23,13 +21,13 @@ void ws_service_onConnect(
         if (!clientMsg->session || !(session = corto_lookup(sessions, clientMsg->session))) {
             char *sessionId = httpserver_random(17);
             session = ws_service_SessionCreateChild(sessions, sessionId);
-            corto_ptr_setref(&session->conn, c);
-            corto_ptr_setref(&c->ctx, session);
+            corto_set_ref(&session->conn, c);
+            corto_set_ref(&c->ctx, session);
             corto_trace("connect: established session '%s'", sessionId);
             corto_dealloc(sessionId);
         } else {
-            corto_ptr_setref(&session->conn, c);
-            corto_ptr_setref(&c->ctx, session);
+            corto_set_ref(&session->conn, c);
+            corto_set_ref(&c->ctx, session);
             corto_trace("connect: reestablished session '%s'", clientMsg->session);
             corto_release(session);
         }
@@ -59,22 +57,20 @@ void ws_service_onSub(
     }
 
     /* Create new subscription */
-    sub = corto_declareChild(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
+    sub = corto_declare(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
     if (!sub) {
         msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
         corto_error("creation of subscriber failed: %s", corto_lasterr());
     } else {
-
         /* Query parameters */
-        corto_ptr_setstr(&sub->super.query.from, clientMsg->parent);
-        corto_ptr_setstr(&sub->super.query.select, clientMsg->expr);
-        corto_ptr_setstr(&sub->super.query.type, clientMsg->type);
-
+        corto_set_str(&sub->super.query.from, clientMsg->parent);
+        corto_set_str(&sub->super.query.select, clientMsg->expr);
+        corto_set_str(&sub->super.query.type, clientMsg->type);
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/
         /* Set dispatcher & instance to session and server */
-        corto_ptr_setref(&corto_observer(sub)->instance, session);
-        corto_ptr_setref(&corto_observer(sub)->dispatcher, this);
+        corto_set_ref(&corto_observer(sub)->instance, session);
+        corto_set_ref(&corto_observer(sub)->dispatcher, this);
         /* Enable subscriber so subok is sent before alignment data */
         corto_observer(sub)->enabled = FALSE;
         /* Set if subscription requests summary data */
@@ -182,7 +178,7 @@ void ws_service_flush(
             corto_ll_iterRemove(&it);
 
             /* It is possible that the session has already been deleted */
-            if (!corto_checkState(e->instance, CORTO_DELETED)) {
+            if (!corto_check_state(e->instance, CORTO_DELETED)) {
                 safe_ws_service_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
                 if (!corto_ll_hasObject(subs, e->subscriber)) {
                     corto_ll_insert(subs, e->subscriber);
@@ -214,19 +210,21 @@ void ws_service_onClose(
     if (c->ctx) {
         corto_trace("close: disconnected session '%s'", corto_idof(c->ctx));
         corto_delete(c->ctx);
-        corto_ptr_setref(&c->ctx, NULL);
+        corto_set_ref(&c->ctx, NULL);
     }
+
 }
 
 void ws_service_onMessage(
     ws_service this,
     httpserver_HTTP_Connection c,
-    corto_string msg)
+    const char *msg)
 {
     corto_log_push("ws");
-    corto_object o = corto_createFromContent("text/json", msg);
-    if (!o || !corto_checkState(o, CORTO_VALID)) {
-        corto_error("%s (malformed message)", corto_lasterr());
+    
+    corto_object o = NULL;
+    if (corto_deserialize(&o, "text/json", msg)) {
+        corto_throw("malformed message: %s", msg);
         goto error;
     }
 
@@ -289,8 +287,8 @@ void ws_service_post(
         observer = ((corto_subscriberEvent*)e)->subscriber,
         instance = ((corto_subscriberEvent*)e)->instance;
 
-    if (corto_checkState(observer, CORTO_DELETED) ||
-        (instance && corto_checkState(instance, CORTO_DELETED)))
+    if (corto_check_state(observer, CORTO_DELETED) ||
+        (instance && corto_check_state(instance, CORTO_DELETED)))
     {
         corto_release(e);
         corto_unlock(this);

@@ -25,8 +25,8 @@ typedef struct ws_typeSerializer_t {
 } ws_typeSerializer_t;
 
 ws_dataType* ws_data_addMetadata(
-    ws_service_Session session, 
-    ws_data *msg, 
+    ws_service_Session session,
+    ws_data *msg,
     corto_type t);
 
 corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void *userData) {
@@ -40,17 +40,70 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
     if (data->count) {
         corto_buffer_appendstr(&data->memberBuff, ",");
     } else {
-        corto_buffer_appendstr(&data->memberBuff, "{"); 
+        corto_buffer_appendstr(&data->memberBuff, "[");
     }
 
     corto_id typeId;
     corto_fullpath(typeId, type);
     corto_string escaped = ws_serializer_escape(typeId, NULL);
     corto_buffer_append(
-        &data->memberBuff, 
-        "\"%s\":\"%s\"", 
-        m ? corto_idof(m) : "super", 
+        &data->memberBuff,
+        "[\"%s\",\"%s\"",
+        m ? corto_idof(m) : "super",
         escaped);
+
+    /* If member contains additional meta information, serialize it */
+    if (m && (m->modifiers != CORTO_GLOBAL || corto_ll_count(m->tags) || m->unit)) {
+        bool first = true;
+        corto_buffer_appendstr(&data->memberBuff, ",{");
+        if (m->modifiers != CORTO_GLOBAL) {
+            corto_buffer_appendstr(&data->memberBuff, "\"m\":\"");
+            if ((m->modifiers & CORTO_READONLY) == CORTO_READONLY) {
+                corto_buffer_appendstr(&data->memberBuff, "r");
+            }
+            if ((m->modifiers & CORTO_CONST) == CORTO_CONST) {
+                corto_buffer_appendstr(&data->memberBuff, "c");
+            }
+            if ((m->modifiers & CORTO_KEY) == CORTO_KEY) {
+                corto_buffer_appendstr(&data->memberBuff, "k");
+            }
+            if ((m->modifiers & CORTO_OPTIONAL) == CORTO_OPTIONAL) {
+                corto_buffer_appendstr(&data->memberBuff, "o");
+            }
+            corto_buffer_appendstr(&data->memberBuff, "\"");
+            first = false;
+        }
+        if (m->unit) {
+            if (!first) {
+                corto_buffer_appendstr(&data->memberBuff, ",");
+            }
+            corto_buffer_append(
+                &data->memberBuff,
+                "\"u\":[\"%s\",\"%s\",\"%s\"]",
+                corto_idof(m->unit->quantity),
+                corto_idof(m->unit),
+                m->unit->symbol);
+        }
+        if (corto_ll_count(m->tags)) {
+            if (!first) {
+                corto_buffer_appendstr(&data->memberBuff, ",");
+            }
+            corto_buffer_append(&data->memberBuff, "\"t\":[");
+            corto_iter it = corto_ll_iter(m->tags);
+            int count = 0;
+            while (corto_iter_hasNext(&it)) {
+                corto_tag t = corto_iter_next(&it);
+                if (count) {
+                    corto_buffer_appendstr(&data->memberBuff, ",");
+                }
+                corto_buffer_append("\"%s\"", corto_idof(t));
+            }
+            corto_buffer_appendstr(&data->memberBuff, "]");
+        }
+        corto_buffer_appendstr(&data->memberBuff, "}");
+    }
+    corto_buffer_appendstr(&data->memberBuff, "]");
+
     corto_dealloc(escaped);
 
     data->count ++;
@@ -94,7 +147,7 @@ static corto_walk_opt ws_typeSerializer(void) {
     result.accessKind = CORTO_NOT;
     result.aliasAction = CORTO_WALK_ALIAS_IGNORE;
     result.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;
-    result.metaprogram[CORTO_BASE] = ws_typeSerializer_member;    
+    result.metaprogram[CORTO_BASE] = ws_typeSerializer_member;
     result.metaprogram[CORTO_MEMBER] = ws_typeSerializer_member;
     result.metaprogram[CORTO_CONSTANT] = ws_typeSerializer_constant;
     result.program[CORTO_COLLECTION] = ws_typeSerializer_element;
@@ -105,7 +158,7 @@ static corto_walk_opt ws_typeSerializer(void) {
 static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
     if (corto_ll_count(data->data)) {
         corto_id typeId;
-        corto_fullpath(typeId, type);    
+        corto_fullpath(typeId, type);
         corto_iter it = corto_ll_iter(data->data);
         while (corto_iter_hasNext(&it)) {
             ws_dataType *dataType = corto_iter_next(&it);
@@ -118,9 +171,9 @@ static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
 }
 
 ws_dataType* ws_data_addMetadata(
-    ws_service_Session session, 
-    ws_data *msg, 
-    corto_type t) 
+    ws_service_Session session,
+    ws_data *msg,
+    corto_type t)
 {
     bool appendType = false;
     ws_dataType *dataType = ws_data_findDataType(msg, t);
@@ -138,7 +191,7 @@ ws_dataType* ws_data_addMetadata(
         corto_ll_insert(session->typesAligned, t);
         corto_metawalk(&s, t, &walkData);
         if (walkData.count) {
-            corto_buffer_appendstr(&walkData.memberBuff, "}");
+            corto_buffer_appendstr(&walkData.memberBuff, "]");
             corto_string members = corto_buffer_str(&walkData.memberBuff);
             corto_stringSet(dataType->members, members);
             corto_dealloc(members);
@@ -202,7 +255,7 @@ void ws_service_Session_Subscription_processEvents(
                 dataType->del = corto_alloc(sizeof(corto_ll));
                 *dataType->del = corto_ll_new();
             }
-            dataObject = ws_dataObjectListAppendAlloc(*dataType->del);   
+            dataObject = ws_dataObjectListAppendAlloc(*dataType->del);
         }
 
         if (dataObject) {
@@ -211,10 +264,30 @@ void ws_service_Session_Subscription_processEvents(
                 corto_stringSet(dataObject->p, e->data.parent);
             }
 
-            /* Set owner if != NULL */
+            /* Set owner if owner is remote */
             if (e->data.owner) {
                 corto_id ownerId;
-                corto_stringSet(dataObject->o, corto_fullpath(ownerId, e->data.owner));
+                if (corto_instanceof(corto_mount_o, e->data.owner)) {
+                    if (corto_mount(e->data.owner)->policy.ownership == CORTO_REMOTE_SOURCE) {
+                        corto_stringSet(dataObject->s, corto_fullpath(ownerId, e->data.owner));
+                    }
+                }
+            }
+
+            /* Mark object as readonly if not writable or builtin */
+            if (e->data.object) {
+                char attr[3] = {0};
+                if (!corto_check_attr(e->data.object, CORTO_ATTR_WRITABLE) ||
+                     corto_isbuiltin(e->data.object))
+                {
+                    strcat(attr, "r");
+                }
+                if (!corto_check_state(e->data.object, CORTO_VALID)) {
+                    strcat(attr, "i");
+                }
+                if (strlen(attr)) {
+                    corto_stringSet(dataObject->a, attr);
+                }
             }
 
             /* Don't serialize for DELETE */
@@ -240,4 +313,3 @@ void ws_service_Session_Subscription_processEvents(
 error:
     corto_delete(msg);
 }
-

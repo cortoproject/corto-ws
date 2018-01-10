@@ -43,7 +43,8 @@ verbatim dataMembers: "text/json"
 struct dataObject:/
   id: string
   p: string, optional
-  o: string, optional
+  s: string, optional
+  a: string, optional
   v: verbatim{"text/json"}, optional
 
 struct dataType:/
@@ -71,7 +72,7 @@ struct update:/
 
 // WS Server
 container service: httpserver/Service, implements={dispatcher}:/
-  
+
   void post(event e) // Post event to event queue
   void purge(subscriber sub) // Purge events from queue for a subscriber
   void flush(subscriber sub) // Flush pending events for a subscriber
@@ -88,7 +89,7 @@ container service: httpserver/Service, implements={dispatcher}:/
     // Private members
     conn: HTTP/Connection, private|local // HTTP connection
     typesAligned: list{type}, private|local // Track types aligned for session
-  
+
     void send(object msg)
 
     // Subscriptions for session
@@ -99,5 +100,3 @@ container service: httpserver/Service, implements={dispatcher}:/
       int16 construct()
       void addEvent(event e)
       void processEvents()
-
-

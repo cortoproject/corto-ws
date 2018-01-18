@@ -5,9 +5,9 @@
         "author": "Sander Mertens",
         "organization": "cortoproject",
         "repository": "https://github.com/cortoproject/ws",
-        "license": "MIT",        
+        "license": "MIT",
         "description": "Websocket service for subscribing to store contents",
         "version": "1.0.0",
-        "use": ["corto/ws/c", "corto/httpserver"]
+        "use": ["base64", "corto/ws/c", "corto/httpserver", "corto/range"]
     }
 }

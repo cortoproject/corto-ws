@@ -1,6 +1,7 @@
 /* This is a managed file. Do not delete this comment. */
 
 #include <corto/ws/ws.h>
+
 void ws_service_Session_Subscription_addEvent(
     ws_service_Session_Subscription this,
     corto_event *e)
@@ -15,6 +16,20 @@ int16_t ws_service_Session_Subscription_construct(
     return corto_subscriber_construct(this);
 }
 
+static
+void ws_type_identifier(
+    corto_type type,
+    corto_id typeId)
+{
+    if (corto_check_attr(type, CORTO_ATTR_NAMED) && corto_childof(root_o, type)) {
+        corto_fullpath(typeId, type);
+    } else {
+        long unsigned int len = sizeof(corto_id);
+
+        /* base64 encode type address */
+        base64_encode((unsigned char*)&type, sizeof(void*), (unsigned char*)typeId, &len);
+    }
+}
 
 typedef struct ws_typeSerializer_t {
     ws_service_Session session;
@@ -44,7 +59,8 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
     }
 
     corto_id typeId;
-    corto_fullpath(typeId, type);
+    ws_type_identifier(type, typeId);
+
     corto_string escaped = ws_serializer_escape(typeId, NULL);
     corto_buffer_append(
         &data->memberBuff,
@@ -53,10 +69,16 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
         escaped);
 
     /* If member contains additional meta information, serialize it */
-    if (m && (m->modifiers != CORTO_GLOBAL || corto_ll_count(m->tags) || m->unit)) {
+    bool add_modifiers = m
+            ? ((m->modifiers &
+                (CORTO_READONLY|CORTO_CONST|CORTO_KEY|CORTO_OPTIONAL)) != 0)
+            : false
+            ;
+
+    if (m && (add_modifiers || corto_ll_count(m->tags) || m->unit)) {
         bool first = true;
         corto_buffer_appendstr(&data->memberBuff, ",{");
-        if (m->modifiers != CORTO_GLOBAL) {
+        if (add_modifiers) {
             corto_buffer_appendstr(&data->memberBuff, "\"m\":\"");
             if ((m->modifiers & CORTO_READONLY) == CORTO_READONLY) {
                 corto_buffer_appendstr(&data->memberBuff, "r");
@@ -158,7 +180,7 @@ static corto_walk_opt ws_typeSerializer(void) {
 static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
     if (corto_ll_count(data->data)) {
         corto_id typeId;
-        corto_fullpath(typeId, type);
+        ws_type_identifier(type, typeId);
         corto_iter it = corto_ll_iter(data->data);
         while (corto_iter_hasNext(&it)) {
             ws_dataType *dataType = corto_iter_next(&it);
@@ -179,25 +201,31 @@ ws_dataType* ws_data_addMetadata(
     ws_dataType *dataType = ws_data_findDataType(msg, t);
     if (!dataType) {
         dataType = corto_calloc(sizeof(ws_dataType));
-        corto_set_str(&dataType->type, corto_fullpath(NULL, t));
+        corto_id typeId;
+        ws_type_identifier(t, typeId);
+        corto_set_str(&dataType->type, typeId);
         appendType = true;
     }
 
     if (!corto_ll_hasObject(session->typesAligned, t)) {
         corto_type kind = corto_typeof(t);
         corto_stringSet(dataType->kind, corto_fullpath(NULL, kind));
-        corto_walk_opt s = ws_typeSerializer();
-        ws_typeSerializer_t walkData = {session, msg, dataType, CORTO_BUFFER_INIT, 0};
-        corto_ll_insert(session->typesAligned, t);
-        corto_metawalk(&s, t, &walkData);
-        if (walkData.count) {
-            corto_buffer_appendstr(&walkData.memberBuff, "]");
-            corto_string members = corto_buffer_str(&walkData.memberBuff);
-            corto_stringSet(dataType->members, members);
-            corto_dealloc(members);
-        }
-        if (t->reference) {
-            corto_boolSet(dataType->reference, TRUE);
+
+        /* Don't treat range types as composites */
+        if (kind != (corto_type)corto_range_o) {
+            corto_walk_opt s = ws_typeSerializer();
+            ws_typeSerializer_t walkData = {session, msg, dataType, CORTO_BUFFER_INIT, 0};
+            corto_ll_insert(session->typesAligned, t);
+            corto_metawalk(&s, t, &walkData);
+            if (walkData.count) {
+                corto_buffer_appendstr(&walkData.memberBuff, "]");
+                corto_string members = corto_buffer_str(&walkData.memberBuff);
+                corto_stringSet(dataType->members, members);
+                corto_dealloc(members);
+            }
+            if (t->reference) {
+                corto_boolSet(dataType->reference, TRUE);
+            }
         }
     }
 

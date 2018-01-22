@@ -8,6 +8,12 @@
         "license": "MIT",
         "description": "Websocket service for subscribing to store contents",
         "version": "1.0.0",
-        "use": ["base64", "corto/ws/c", "corto/httpserver", "corto/range"]
+        "use": [
+            "base64",
+            "corto/ws/c",
+            "corto/httpserver",
+            "corto/range",
+            "tags"
+        ]
     }
 }

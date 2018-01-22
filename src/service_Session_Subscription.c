@@ -118,7 +118,8 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
                 if (count) {
                     corto_buffer_appendstr(&data->memberBuff, ",");
                 }
-                corto_buffer_append(&data->memberBuff, "\"%s\"", corto_idof(t));
+                corto_buffer_append(&data->memberBuff, "\"%s\"",
+                    corto_path(NULL, tags_o, t, "/"));
             }
             corto_buffer_appendstr(&data->memberBuff, "]");
         }

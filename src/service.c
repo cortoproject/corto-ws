@@ -187,9 +187,7 @@ void ws_service_flush(
             } else {
                 corto_assert(corto_release(e) == 0, "event is leaking");
             }
-
         }
-
     }
 
     corto_unlock(this);
@@ -221,7 +219,7 @@ void ws_service_onMessage(
     const char *msg)
 {
     corto_log_push("ws");
-    
+
     corto_object o = NULL;
     if (corto_deserialize(&o, "text/json", msg)) {
         corto_throw("malformed message: %s", msg);
@@ -249,9 +247,7 @@ error:
 void ws_service_onPoll(
     ws_service this)
 {
-
     ws_service_flush(this, NULL);
-
 }
 
 #define WS_QUEUE_THRESHOLD 10000
@@ -306,6 +302,7 @@ void ws_service_post(
 
     size = corto_ll_count(this->events);
     corto_unlock(this);
+
     /* If queue is getting big, slow down publisher */
     if (size > WS_QUEUE_THRESHOLD) {
         corto_sleep(0, WS_QUEUE_THRESHOLD_SLEEP);

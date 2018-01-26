@@ -145,7 +145,7 @@ corto_int16 ws_typeSerializer_constant(corto_walk_opt* s, corto_value *info, voi
         data->dataType->constants = corto_alloc(sizeof(corto_ll));
         *data->dataType->constants = corto_ll_new();
     }
-    corto_stringListAppend(*data->dataType->constants, corto_idof(c));
+    corto_stringList_append(*data->dataType->constants, corto_idof(c));
     ws_data_addMetadata(data->session, data->msg, type);
     return 0;
 }
@@ -278,13 +278,13 @@ void ws_service_Session_Subscription_processEvents(
                 dataType->set = corto_alloc(sizeof(corto_ll));
                 *dataType->set = corto_ll_new();
             }
-            dataObject = ws_dataObjectListAppendAlloc(*dataType->set);
+            dataObject = ws_dataObjectList_append_alloc(*dataType->set);
         } else if (mask & CORTO_DELETE) {
             if (!dataType->del) {
                 dataType->del = corto_alloc(sizeof(corto_ll));
                 *dataType->del = corto_ll_new();
             }
-            dataObject = ws_dataObjectListAppendAlloc(*dataType->del);
+            dataObject = ws_dataObjectList_append_alloc(*dataType->del);
         }
 
         if (dataObject) {

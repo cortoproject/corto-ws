@@ -15,12 +15,12 @@ void ws_service_onConnect(
     corto_object msg = NULL;
 
     if (clientMsg->version && strcmp(clientMsg->version, "1.0")) {
-        msg = ws_failedCreate("1.0");
+        msg = ws_failed_create(NULL, NULL, "1.0");
         corto_warning("connect: wrong version '%s'", clientMsg->version);
     } else {
         if (!clientMsg->session || !(session = corto_lookup(sessions, clientMsg->session))) {
             char *sessionId = httpserver_random(17);
-            session = ws_service_SessionCreateChild(sessions, sessionId);
+            session = ws_service_Session_create(sessions, sessionId);
             corto_set_ref(&session->conn, c);
             corto_set_ref(&c->ctx, session);
             corto_trace("connect: established session '%s'", sessionId);
@@ -32,7 +32,7 @@ void ws_service_onConnect(
             corto_release(session);
         }
 
-        msg = ws_connectedCreate(corto_idof(session));
+        msg = ws_connected_create(NULL, NULL, corto_idof(session));
     }
 
     ws_service_Session_send(session, msg);
@@ -59,7 +59,7 @@ void ws_service_onSub(
     /* Create new subscription */
     sub = corto_declare(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
     if (!sub) {
-        msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
+        msg = ws_subfail_create(NULL, NULL, corto_idof(sub), corto_lasterr());
         corto_error("creation of subscriber failed: %s", corto_lasterr());
     } else {
         /* Query parameters */
@@ -76,12 +76,12 @@ void ws_service_onSub(
         /* Set if subscription requests summary data */
         sub->summary = clientMsg->summary;
         if (corto_define(sub)) {
-            msg = ws_subfailCreate(corto_idof(sub), corto_lasterr());
+            msg = ws_subfail_create(NULL, NULL, corto_idof(sub), corto_lasterr());
             corto_error("failed to create subscriber: %s", corto_lasterr());
             corto_delete(sub);
             sub = NULL;
         } else {
-            msg = ws_subokCreate(corto_idof(sub));
+            msg = ws_subok_create(NULL, NULL, corto_idof(sub));
             corto_trace("sub: subscriber '%s' listening to '%s', '%s'",
                 clientMsg->id, clientMsg->parent, clientMsg->expr);
         }

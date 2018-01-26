@@ -10,9 +10,11 @@
 #include <corto/corto.h>
 #include <corto/corto.h>
 #include <corto/ws/_project.h>
+#include <tags/c/c.h>
 #include <corto/range/c/c.h>
 #include <corto/httpserver/c/c.h>
 #include <corto/c/c.h>
+#include <tags/tags.h>
 #include <corto/range/range.h>
 #include <corto/httpserver/httpserver.h>
 #include <base64/base64.h>

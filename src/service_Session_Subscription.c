@@ -210,7 +210,7 @@ ws_dataType* ws_data_addMetadata(
 
     if (!corto_ll_hasObject(session->typesAligned, t)) {
         corto_type kind = corto_typeof(t);
-        corto_stringSet(dataType->kind, corto_fullpath(NULL, kind));
+        corto_string__set(dataType->kind, corto_fullpath(NULL, kind));
 
         /* Don't treat range types as composites */
         if (kind != (corto_type)corto_range_o) {
@@ -221,11 +221,11 @@ ws_dataType* ws_data_addMetadata(
             if (walkData.count) {
                 corto_buffer_appendstr(&walkData.memberBuff, "]");
                 corto_string members = corto_buffer_str(&walkData.memberBuff);
-                corto_stringSet(dataType->members, members);
+                corto_string__set(dataType->members, members);
                 corto_dealloc(members);
             }
             if (t->reference) {
-                corto_boolSet(dataType->reference, TRUE);
+                corto_bool__set(dataType->reference, TRUE);
             }
         }
     }
@@ -290,7 +290,7 @@ void ws_service_Session_Subscription_processEvents(
         if (dataObject) {
             corto_set_str(&dataObject->id, e->data.id);
             if (strcmp(e->data.parent, ".")) {
-                corto_stringSet(dataObject->p, e->data.parent);
+                corto_string__set(dataObject->p, e->data.parent);
             }
 
             /* Set owner if owner is remote */
@@ -298,7 +298,7 @@ void ws_service_Session_Subscription_processEvents(
                 corto_id ownerId;
                 if (corto_instanceof(corto_mount_o, e->data.owner)) {
                     if (corto_mount(e->data.owner)->policy.ownership == CORTO_REMOTE_SOURCE) {
-                        corto_stringSet(dataObject->s, corto_fullpath(ownerId, e->data.owner));
+                        corto_string__set(dataObject->s, corto_fullpath(ownerId, e->data.owner));
                     }
                 }
             }
@@ -315,7 +315,7 @@ void ws_service_Session_Subscription_processEvents(
                     strcat(attr, "i");
                 }
                 if (strlen(attr)) {
-                    corto_stringSet(dataObject->a, attr);
+                    corto_string__set(dataObject->a, attr);
                 }
             }
 
@@ -324,7 +324,7 @@ void ws_service_Session_Subscription_processEvents(
                 corto_value v = corto_value_mem((void*)data, t);
                 corto_string value = ws_serializer_serialize(&v, this->summary);
                 if (value) {
-                    corto_stringSet(dataObject->v, NULL);
+                    corto_string__set(dataObject->v, NULL);
                     *(corto_string*)dataObject->v = value;
                 }
             }

@@ -8,6 +8,4 @@ void ws_service_Session_send(
     corto_string msgJson = corto_serialize(msg, "text/json");
     httpserver_HTTP_Connection_write(this->conn, msgJson);
     corto_dealloc(msgJson);
-
 }
-

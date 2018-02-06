@@ -110,7 +110,7 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
             if (!first) {
                 corto_buffer_appendstr(&data->memberBuff, ",");
             }
-            corto_buffer_append(&data->memberBuff, "\"t\":[");
+            corto_buffer_appendstr(&data->memberBuff, "\"t\":[");
             corto_iter it = corto_ll_iter(m->tags);
             int count = 0;
             while (corto_iter_hasNext(&it)) {
@@ -251,6 +251,7 @@ void ws_service_Session_Subscription_processEvents(
     corto_set_str(&msg->sub, corto_idof(this));
 
     corto_subscriberEvent *e;
+
     while ((e = corto_ll_takeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;
         void *data = (void*)e->data.value;
@@ -338,7 +339,6 @@ void ws_service_Session_Subscription_processEvents(
     corto_define(msg);
 
     ws_service_Session_send(session, msg);
-
 error:
     corto_delete(msg);
 }

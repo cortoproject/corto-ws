@@ -95,11 +95,7 @@ void ws_service_onSub(
         if (corto_subscriber_subscribe(sub, session)) {
             corto_error("ws: failed to enable subscriber: %s", corto_lasterr());
         }
-
-        /* Flush aligned data for quick response time */
-        ws_service_flush(this, &sub->super);
     }
-
 }
 
 static

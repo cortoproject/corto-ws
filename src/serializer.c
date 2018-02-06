@@ -32,24 +32,24 @@ static corto_string ws_serializer_truncate(corto_string str) {
 }
 
 static corto_int16 ws_serializer_primitive(
-    corto_walk_opt* s, 
-    corto_value *info, 
-    void *userData) 
+    corto_walk_opt* s,
+    corto_value *info,
+    void *userData)
 {
-    corto_primitive t = corto_primitive(corto_value_typeof(info));
+    corto_primitive t = (corto_primitive)corto_value_typeof(info);
     void *ptr = corto_value_ptrof(info);
     ws_serializer_t *data = userData;
-    corto_string str = NULL, prev = NULL;
+    corto_string str = NULL;
 
     /* Binary numbers translate to hex (0x0) numbers which JSON doesn't understand.
      * translate to a regular unsigned int */
     if (t->kind == CORTO_BINARY) {
         switch(t->width) {
-        case CORTO_WIDTH_8: t = corto_primitive(corto_uint8_o); break;
-        case CORTO_WIDTH_16: t = corto_primitive(corto_uint16_o); break;
-        case CORTO_WIDTH_32: t = corto_primitive(corto_uint32_o); break;
-        case CORTO_WIDTH_64: t = corto_primitive(corto_uint64_o); break;
-        case CORTO_WIDTH_WORD: t = corto_primitive(corto_uint64_o); break; /* TODO: add uintptr */
+        case CORTO_WIDTH_8: t = (corto_primitive)corto_uint8_o; break;
+        case CORTO_WIDTH_16: t = (corto_primitive)corto_uint16_o; break;
+        case CORTO_WIDTH_32: t = (corto_primitive)corto_uint32_o; break;
+        case CORTO_WIDTH_64: t = (corto_primitive)corto_uint64_o; break;
+        case CORTO_WIDTH_WORD: t = (corto_primitive)corto_uint64_o; break; /* TODO: add uintptr */
         }
     }
 
@@ -57,44 +57,69 @@ static corto_int16 ws_serializer_primitive(
         corto_buffer_appendstr(data->buff, ",");
     }
 
-    if (corto_ptr_cast(t, ptr, corto_primitive(corto_string_o), &str)) {
-        goto error;
-    }
-
     switch(t->kind) {
     case CORTO_BOOLEAN:
+        if (*(bool*)ptr) {
+            corto_buffer_appendstr(data->buff, "true");
+        } else {
+            corto_buffer_appendstr(data->buff, "false");
+        }
+        break;
     case CORTO_UINTEGER:
     case CORTO_INTEGER:
     case CORTO_FLOAT:
+        if (corto_ptr_cast(t, ptr, corto_string_o, &str)) {
+            goto error;
+        }
         if (!strcmp(str, "nan")) {
             corto_set_str(&str, "null");
         }
-        corto_buffer_append(data->buff, "%s", str);
+        corto_buffer_appendstr_zerocpy(data->buff, str);
         break;
     case CORTO_TEXT: {
+        str = *(char**)ptr;
         size_t length = 0;
-        if (!*(corto_string*)ptr) {
+        if (!str) {
             corto_buffer_appendstr(data->buff, "null");
-            str = NULL;
-            break;
+        } else {
+            str = ws_serializer_escape(str, &length);
+            if (data->summary && length > WS_MAX_SUMMARY_STRING) {
+                str = ws_serializer_truncate(str);
+            }
+            corto_buffer_appendstr(data->buff, "\"");
+            corto_buffer_appendstr_zerocpy(data->buff, str);
+            corto_buffer_appendstr(data->buff, "\"");
         }
-        prev = str;
-        str = ws_serializer_escape(str, &length);
-        if (data->summary && length > WS_MAX_SUMMARY_STRING) {
-            str = ws_serializer_truncate(str);
-        }
-        corto_dealloc(prev);
+        break;
+    }
+    case CORTO_ENUM: {
+        corto_constant *c = corto_enum_constant(t, *(int32_t*)ptr);
+        corto_buffer_appendstr(data->buff, "\"");
+        corto_buffer_appendstr(data->buff, corto_idof(c));
+        corto_buffer_appendstr(data->buff, "\"");
+        break;
     }
     case CORTO_BITMASK:
-    case CORTO_ENUM:
-    case CORTO_CHARACTER:
-        corto_buffer_append(data->buff, "\"%s\"", str);
+        if (*(uint32_t*)ptr) {
+            if (corto_ptr_cast(t, ptr, corto_string_o, &str)) {
+                goto error;
+            }
+            corto_buffer_appendstr(data->buff, "\"");
+            corto_buffer_appendstr_zerocpy(data->buff, str);
+            corto_buffer_appendstr(data->buff, "\"");
+        } else {
+            corto_buffer_appendstr(data->buff, "0");
+        }
         break;
-    default: 
+    case CORTO_CHARACTER:
+        corto_buffer_appendstr(data->buff, "\"");
+        corto_buffer_appendstrn(data->buff, ptr, 1);
+        corto_buffer_appendstr(data->buff, "\"");
+        break;
+    default:
         break;
     }
 
-    if (str) corto_dealloc(str);
     data->count ++;
     data->valueCount ++;
 
@@ -104,9 +129,9 @@ error:
 }
 
 static corto_int16 ws_serializer_reference(
-    corto_walk_opt* s, 
-    corto_value *info, 
-    void *userData) 
+    corto_walk_opt* s,
+    corto_value *info,
+    void *userData)
 {
     ws_serializer_t *data = userData;
     corto_object o = *(corto_object*)corto_value_ptrof(info);
@@ -120,20 +145,20 @@ static corto_int16 ws_serializer_reference(
     corto_dealloc(str);
     data->count ++;
     data->valueCount ++;
-    
+
     return 0;
 }
 
 static corto_int16 ws_serializer_object(
-    corto_walk_opt* s, 
-    corto_value *info, 
-    void *userData) 
+    corto_walk_opt* s,
+    corto_value *info,
+    void *userData)
 {
     ws_serializer_t *data = userData;
     ws_serializer_t privateData = {
-        .count = 0, 
-        .valueCount = 0, 
-        .buff = data->buff, 
+        .count = 0,
+        .valueCount = 0,
+        .buff = data->buff,
         .summary = data->summary
     };
     corto_type t = corto_value_typeof(info);
@@ -201,7 +226,7 @@ corto_string ws_serializer_serialize(corto_value *v, bool summary) {
         corto_dealloc(result);
         result = NULL;
     }
-    
+
     return result;
 error:
     corto_dealloc(result);

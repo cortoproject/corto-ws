@@ -248,21 +248,21 @@ void ws_service_onPoll(
 
 #define WS_QUEUE_THRESHOLD 10000
 #define WS_QUEUE_THRESHOLD_SLEEP 10000000
-static corto_subscriberEvent* ws_service_findEvent(ws_service this, corto_subscriberEvent *e) {
-    corto_iter iter = corto_ll_iter(this->events);
-    corto_subscriberEvent *e2;
-    while ((corto_iter_hasNext(&iter))) {
-        e2 = corto_iter_next(&iter);
-        if (!strcmp(e2->data.id, e->data.id) &&
-            !strcmp(e2->data.parent, e->data.parent) &&
-            (e2->subscriber == e->subscriber))
-        {
-            return e2;
-        }
 
+static
+int ws_service_findEvent(
+    void *o1,
+    void *o2)
+{
+    corto_subscriberEvent *e1 = o1, *e2 = o2;
+    if (!strcmp(e2->data.id, e1->data.id) &&
+        !strcmp(e2->data.parent, e1->data.parent) &&
+        (e2->subscriber == e1->subscriber))
+    {
+        return false;
     }
 
-    return NULL;
+    return true;
 }
 
 void ws_service_post(
@@ -270,7 +270,6 @@ void ws_service_post(
     corto_event *e)
 {
     corto_uint32 size = 0;
-    corto_subscriberEvent *e2;
 
     corto_lock(this);
 
@@ -289,9 +288,10 @@ void ws_service_post(
 
     /* Check if there is already another event in the queue for the same object.
      * if so, replace event with latest update. */
-    if ((e2 = ws_service_findEvent(this, corto_subscriberEvent(e)))) {
-        corto_ll_replace(this->events, e2, e);
-        corto_assert(corto_release(e2) == 0, "event is leaking");
+    void *ptr = corto_ll_findPtr(this->events, ws_service_findEvent, e);
+    if (ptr) {
+        corto_release(*(void**)ptr);
+        *(void**)ptr = e;
     } else {
         corto_ll_append(this->events, e);
     }
@@ -303,7 +303,6 @@ void ws_service_post(
     if (size > WS_QUEUE_THRESHOLD) {
         corto_sleep(0, WS_QUEUE_THRESHOLD_SLEEP);
     }
-
 }
 
 void ws_service_purge(

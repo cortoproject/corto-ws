@@ -250,7 +250,7 @@ void ws_service_Session_Subscription_processEvents(
     ws_data *msg = corto_declare(NULL, NULL, ws_data_o);
     corto_set_str(&msg->sub, corto_idof(this));
 
-    corto_subscriberEvent *e;
+    corto_subscriber_event *e;
 
     while ((e = corto_ll_takeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;

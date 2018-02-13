@@ -160,7 +160,7 @@ void ws_service_flush(
     ws_service this,
     corto_subscriber sub)
 {
-    corto_subscriberEvent *e;
+    corto_subscriber_event *e;
     corto_ll subs = corto_ll_new(), to_remove = corto_ll_new();
 
     /* Collect events */
@@ -263,8 +263,8 @@ void ws_service_post(
 
     /* Ignore events from destructed sessions or subscribers */
     corto_object
-        observer = ((corto_subscriberEvent*)e)->subscriber,
-        instance = ((corto_subscriberEvent*)e)->instance;
+        observer = ((corto_subscriber_event*)e)->subscriber,
+        instance = ((corto_subscriber_event*)e)->instance;
 
     if (corto_check_state(observer, CORTO_DELETED) ||
         (instance && corto_check_state(instance, CORTO_DELETED)))
@@ -301,7 +301,7 @@ void ws_service_purge(
     corto_lock(this);
     corto_iter it = corto_rb_iter(this->events);
     while (corto_iter_hasNext(&it)) {
-        corto_subscriberEvent *e = corto_iter_next(&it);
+        corto_subscriber_event *e = corto_iter_next(&it);
         if (e->subscriber == sub) {
             corto_ll_append(to_remove, e);
         }
@@ -309,7 +309,7 @@ void ws_service_purge(
 
     it = corto_ll_iter(to_remove);
     while (corto_iter_hasNext(&it)) {
-        corto_subscriberEvent *e = corto_iter_next(&it);
+        corto_subscriber_event *e = corto_iter_next(&it);
         corto_rb_remove(this->events, e);
         corto_release(e);
     }
@@ -324,7 +324,7 @@ int ws_service_findEvent(
     const void *o1,
     const void *o2)
 {
-    const corto_subscriberEvent *e1 = o1, *e2 = o2;
+    const corto_subscriber_event *e1 = o1, *e2 = o2;
     int result = 0;
 
     if (e1->subscriber != e2->subscriber) {

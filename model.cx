@@ -82,7 +82,7 @@ container service: httpserver/Service, implements={dispatcher}:/
 
   int16 init()
 
-  events: map{null, subscriberEvent}, private|local // Event queue
+  events: map{null, subscriber_event}, private|local // Event queue
 
   // Server sessions
   table Session:/

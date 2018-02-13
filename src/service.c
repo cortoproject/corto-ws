@@ -161,32 +161,37 @@ void ws_service_flush(
     corto_subscriber sub)
 {
     corto_subscriberEvent *e;
-    corto_ll subs = corto_ll_new();
+    corto_ll subs = corto_ll_new(), to_remove = corto_ll_new();
 
     /* Collect events */
     corto_lock(this);
-    corto_iter it = corto_ll_iter(this->events);
+    corto_iter it = corto_rb_iter(this->events);
     while (corto_iter_hasNext(&it)) {
         e = corto_iter_next(&it);
 
         /* Only take events for specified subscriber */
         if (!sub || (sub == e->subscriber)) {
-            corto_ll_iterRemove(&it);
-
-            /* It is possible that the session has already been deleted */
-            if (!corto_check_state(e->instance, CORTO_DELETED)) {
-                safe_ws_service_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
-                if (!corto_ll_hasObject(subs, e->subscriber)) {
-                    corto_ll_insert(subs, e->subscriber);
-                }
-
-            } else {
-                corto_assert(corto_release(e) == 0, "event is leaking");
-            }
+            corto_ll_append(to_remove, e);
         }
     }
 
+    while ((e = corto_ll_takeFirst(to_remove))) {
+        corto_rb_remove(this->events, e);
+
+        /* It is possible that the session has already been deleted */
+        if (!corto_check_state(e->instance, CORTO_DELETED)) {
+            safe_ws_service_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
+            if (!corto_ll_hasObject(subs, e->subscriber)) {
+                corto_ll_insert(subs, e->subscriber);
+            }
+
+        } else {
+            corto_assert(corto_release(e) == 0, "event is leaking");
+        }
+    }
+    corto_ll_free(to_remove);
     corto_unlock(this);
+
     /* Process events outside of lock */
     it = corto_ll_iter(subs);
     while (corto_iter_hasNext(&it)) {
@@ -206,7 +211,6 @@ void ws_service_onClose(
         corto_delete(c->ctx);
         corto_set_ref(&c->ctx, NULL);
     }
-
 }
 
 void ws_service_onMessage(
@@ -249,22 +253,6 @@ void ws_service_onPoll(
 #define WS_QUEUE_THRESHOLD 10000
 #define WS_QUEUE_THRESHOLD_SLEEP 10000000
 
-static
-int ws_service_findEvent(
-    void *o1,
-    void *o2)
-{
-    corto_subscriberEvent *e1 = o1, *e2 = o2;
-    if (!strcmp(e2->data.id, e1->data.id) &&
-        !strcmp(e2->data.parent, e1->data.parent) &&
-        (e2->subscriber == e1->subscriber))
-    {
-        return false;
-    }
-
-    return true;
-}
-
 void ws_service_post(
     ws_service this,
     corto_event *e)
@@ -286,17 +274,15 @@ void ws_service_post(
         return;
     }
 
-    /* Check if there is already another event in the queue for the same object.
-     * if so, replace event with latest update. */
-    void *ptr = corto_ll_findPtr(this->events, ws_service_findEvent, e);
-    if (ptr) {
-        corto_release(*(void**)ptr);
-        *(void**)ptr = e;
-    } else {
-        corto_ll_append(this->events, e);
+    void *key = e;
+    void *data = corto_rb_findOrSetPtr(this->events, &key);
+    if (*(void**)data) {
+        corto_release(*(void**)data);
+        *(void**)key = e;
     }
+    *(void**)data = e;
 
-    size = corto_ll_count(this->events);
+    size = corto_rb_count(this->events);
     corto_unlock(this);
 
     /* If queue is getting big, slow down publisher */
@@ -309,18 +295,51 @@ void ws_service_purge(
     ws_service this,
     corto_subscriber sub)
 {
+    corto_ll to_remove = corto_ll_new();
 
     /* Purge events for specified subscriber */
     corto_lock(this);
-    corto_iter it = corto_ll_iter(this->events);
+    corto_iter it = corto_rb_iter(this->events);
     while (corto_iter_hasNext(&it)) {
         corto_subscriberEvent *e = corto_iter_next(&it);
         if (e->subscriber == sub) {
-            corto_release(e);
-            corto_ll_iterRemove(&it);
+            corto_ll_append(to_remove, e);
         }
-
     }
 
+    it = corto_ll_iter(to_remove);
+    while (corto_iter_hasNext(&it)) {
+        corto_subscriberEvent *e = corto_iter_next(&it);
+        corto_rb_remove(this->events, e);
+        corto_release(e);
+    }
     corto_unlock(this);
+
+    corto_ll_free(to_remove);
+}
+
+static
+int ws_service_findEvent(
+    void *ctx,
+    const void *o1,
+    const void *o2)
+{
+    const corto_subscriberEvent *e1 = o1, *e2 = o2;
+    int result = 0;
+
+    if (e1->subscriber != e2->subscriber) {
+        result = e1->subscriber > e2->subscriber ? 1 : -1;
+    } else if (!(result = strcmp(e1->data.id, e2->data.id))) {
+        result = strcmp(e1->data.parent, e2->data.parent);
+    }
+
+    return result;
+}
+
+int16_t ws_service_init(
+    ws_service this)
+{
+    /* Initialize events tree with custom compare function */
+    this->events = corto_rb_new(ws_service_findEvent, NULL);
+    return 0;
 }

@@ -80,7 +80,9 @@ container service: httpserver/Service, implements={dispatcher}:/
   void onMessage(HTTP/Connection c, string msg) override // Receive data
   void onClose(HTTP/Connection c) override // Connection closed
 
-  events: list{event}, private|local // Event queue
+  int16 init()
+
+  events: map{null, subscriberEvent}, private|local // Event queue
 
   // Server sessions
   table Session:/

@@ -50,7 +50,7 @@ void ws_service_onSub(
     corto_object msg = NULL;
 
     /* If there is an existing subscription for the specified id, delete it. */
-    service_Session_Subscription sub = corto_lookup(subscriptions, clientMsg->id);
+    ws_service_Session_Subscription sub = corto_lookup(subscriptions, clientMsg->id);
     if (sub) {
         corto_delete(sub);
         corto_release(sub);

@@ -59,7 +59,7 @@ struct dataType:/
 
 struct data:/
   sub: string
-  data: list{dataType}
+  data: list{dataType}, not_null
 
 // Delete message (client -> server)
 struct delete:/
@@ -90,7 +90,7 @@ container service: httpserver/Service, implements={dispatcher}:/
 
     // Private members
     conn: HTTP/Connection, private|local // HTTP connection
-    typesAligned: list{type}, private|local // Track types aligned for session
+    typesAligned: list{type}, private|local|not_null // Track types aligned for session
 
     void send(object msg)
 
@@ -98,7 +98,7 @@ container service: httpserver/Service, implements={dispatcher}:/
     table Subscription: subscriber:/
       id: string, key // Subscription id
       summary: bool, readonly // Is client requesting summary data
-      batch: list{event}, private|local // Events to be handled in next batch
+      batch: list{event}, private|local|not_null // Events to be handled in next batch
       int16 construct()
       void addEvent(event e)
       void processEvents()

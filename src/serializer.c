@@ -11,9 +11,9 @@ typedef struct ws_serializer_t {
 } ws_serializer_t;
 
 corto_string ws_serializer_escape(char *str, size_t *length_out) {
-    int length = stresc(NULL, 0, str);
+    int length = stresc(NULL, 0, '"', str);
     corto_string result = corto_alloc(length + 1);
-    stresc(result, length, str);
+    stresc(result, length, '"', str);
     result[length] = '\0';
 
     if (length_out) {

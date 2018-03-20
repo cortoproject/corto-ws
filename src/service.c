@@ -138,7 +138,7 @@ void ws_service_onUpdate(
 }
 
 static
-void ws_service_onDelete(
+void ws_service_on_delete(
     ws_service this,
     httpserver_HTTP_Connection c,
     ws_delete *deleteMsg)
@@ -202,7 +202,7 @@ void ws_service_flush(
     corto_ll_free(subs);
 }
 
-void ws_service_onClose(
+void ws_service_on_close(
     ws_service this,
     httpserver_HTTP_Connection c)
 {
@@ -213,7 +213,7 @@ void ws_service_onClose(
     }
 }
 
-void ws_service_onMessage(
+void ws_service_on_message(
     ws_service this,
     httpserver_HTTP_Connection c,
     const char *msg)
@@ -232,7 +232,7 @@ void ws_service_onMessage(
     else if (msgType == ws_sub_o) ws_service_onSub(this, c, ws_sub(o));
     else if (msgType == ws_unsub_o) ws_service_onUnsub(this, c, ws_unsub(o));
     else if (msgType == ws_update_o) ws_service_onUpdate(this, c, ws_update(o));
-    else if (msgType == ws_delete_o) ws_service_onDelete(this, c, ws_delete(o));
+    else if (msgType == ws_delete_o) ws_service_on_delete(this, c, ws_delete(o));
     else goto error_type;
     corto_delete(o);
     corto_log_pop();
@@ -244,7 +244,7 @@ error:
     return;
 }
 
-void ws_service_onPoll(
+void ws_service_on_poll(
     ws_service this)
 {
     ws_service_flush(this, NULL);

@@ -76,9 +76,9 @@ container service: httpserver/Service, implements={dispatcher}:/
   void post(event e) // Post event to event queue
   void purge(subscriber sub) // Purge events from queue for a subscriber
   void flush(subscriber sub) // Flush pending events for a subscriber
-  void onPoll() override // Read events from event queue
-  void onMessage(HTTP/Connection c, string msg) override // Receive data
-  void onClose(HTTP/Connection c) override // Connection closed
+  void on_poll() override // Read events from event queue
+  void on_message(HTTP/Connection c, string msg) override // Receive data
+  void on_close(HTTP/Connection c) override // Connection closed
 
   int16 init()
 

@@ -93,7 +93,7 @@ static corto_int16 ws_serializer_primitive(
         break;
     }
     case CORTO_ENUM: {
-        corto_constant *c = corto_enum_constant(t, *(int32_t*)ptr);
+        corto_constant *c = corto_enum_constant_from_value(t, *(int32_t*)ptr);
         corto_buffer_appendstr(data->buff, "\"");
         corto_buffer_appendstr(data->buff, corto_idof(c));
         corto_buffer_appendstr(data->buff, "\"");

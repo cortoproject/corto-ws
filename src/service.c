@@ -66,6 +66,7 @@ void ws_service_onSub(
         corto_set_str(&sub->super.query.from, clientMsg->parent);
         corto_set_str(&sub->super.query.select, clientMsg->expr);
         corto_set_str(&sub->super.query.type, clientMsg->type);
+        sub->super.query.yield_unknown = clientMsg->yield_unknown;
         /*sub->offset = clientMsg->offset;
         sub->limit = clientMsg->limit;*/
         /* Set dispatcher & instance to session and server */

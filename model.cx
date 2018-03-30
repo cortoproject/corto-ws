@@ -23,6 +23,7 @@ struct sub:/
   offset: uint64
   limit: uint64
   summary: bool // Do not send content of collections, shorten strings
+  yield_unknown: bool
 
 // Confirm subscription (server -> client)
 struct subok:/

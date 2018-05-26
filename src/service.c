@@ -205,7 +205,7 @@ void ws_service_flush(
 
 void ws_service_on_close(
     ws_service this,
-    httpserver_HTTP_Connection c)
+    corto_httpserver_HTTP_Connection c)
 {
     if (c->ctx) {
         corto_trace("close: disconnected session '%s'", corto_idof(c->ctx));
@@ -216,7 +216,7 @@ void ws_service_on_close(
 
 void ws_service_on_message(
     ws_service this,
-    httpserver_HTTP_Connection c,
+    corto_httpserver_HTTP_Connection c,
     const char *msg)
 {
     corto_log_push("ws");

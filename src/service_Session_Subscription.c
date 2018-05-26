@@ -49,7 +49,7 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
     corto_type type = corto_value_typeof(info);
     corto_member m = NULL;
     if (info->kind == CORTO_MEMBER) {
-        m = info->is.member.t;
+        m = info->is.member.member;
     }
 
     if (data->count) {
@@ -139,7 +139,7 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
 corto_int16 ws_typeSerializer_constant(corto_walk_opt* s, corto_value *info, void *userData) {
     ws_typeSerializer_t *data = userData;
     corto_type type = corto_value_typeof(info);
-    corto_constant *c = info->is.constant.t;
+    corto_constant *c = info->is.constant.constant;
 
     if (!data->dataType->constants) {
         data->dataType->constants = corto_alloc(sizeof(corto_ll));

@@ -39,12 +39,18 @@ typedef struct ws_typeSerializer_t {
     corto_int32 count;
 } ws_typeSerializer_t;
 
+static
 ws_dataType* ws_data_addMetadata(
     ws_service_Session session,
     ws_data *msg,
     corto_type t);
 
-corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void *userData) {
+static
+int16_t ws_typeSerializer_member(
+    corto_walk_opt* s, 
+    corto_value *info, 
+    void *userData) 
+{
     ws_typeSerializer_t *data = userData;
     corto_type type = corto_value_typeof(info);
     corto_member m = NULL;
@@ -59,6 +65,10 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
     }
 
     corto_id typeId;
+    if (type->reference) {
+        type = corto_object_o;
+    }
+        
     ws_type_identifier(type, typeId);
 
     corto_string escaped = ws_serializer_escape(typeId, NULL);
@@ -136,9 +146,12 @@ corto_int16 ws_typeSerializer_member(corto_walk_opt* s, corto_value *info, void 
     return 0;
 }
 
-corto_int16 ws_typeSerializer_constant(corto_walk_opt* s, corto_value *info, void *userData) {
+int16_t ws_typeSerializer_constant(
+    corto_walk_opt* s, 
+    corto_value *info, 
+    void *userData) 
+{
     ws_typeSerializer_t *data = userData;
-    corto_type type = corto_value_typeof(info);
     corto_constant *c = info->is.constant.constant;
 
     if (!data->dataType->constants) {
@@ -146,11 +159,14 @@ corto_int16 ws_typeSerializer_constant(corto_walk_opt* s, corto_value *info, voi
         *data->dataType->constants = corto_ll_new();
     }
     corto_stringList__append(*data->dataType->constants, corto_idof(c));
-    ws_data_addMetadata(data->session, data->msg, type);
     return 0;
 }
 
-corto_int16 ws_typeSerializer_element(corto_walk_opt* s, corto_value *info, void *userData) {
+int16_t ws_typeSerializer_element(
+    corto_walk_opt* s, 
+    corto_value *info, 
+    void *userData) 
+{
     ws_typeSerializer_t *data = userData;
     corto_collection type = corto_collection(corto_value_typeof(info));
     data->dataType->elementType = corto_calloc(sizeof(char*));
@@ -178,7 +194,11 @@ static corto_walk_opt ws_typeSerializer(void) {
     return result;
 }
 
-static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
+static 
+ws_dataType* ws_data_findDataType(
+    ws_data *data, 
+    corto_type type) 
+{
     if (corto_ll_count(data->data)) {
         corto_id typeId;
         ws_type_identifier(type, typeId);
@@ -193,12 +213,14 @@ static ws_dataType* ws_data_findDataType(ws_data *data, corto_type type) {
     return NULL;
 }
 
+static
 ws_dataType* ws_data_addMetadata(
     ws_service_Session session,
     ws_data *msg,
     corto_type t)
 {
     bool appendType = false;
+
     ws_dataType *dataType = ws_data_findDataType(msg, t);
     if (!dataType) {
         dataType = corto_calloc(sizeof(ws_dataType));
@@ -236,7 +258,6 @@ ws_dataType* ws_data_addMetadata(
 
     return dataType;
 }
-
 
 void ws_service_Session_Subscription_processEvents(
     ws_service_Session_Subscription this)

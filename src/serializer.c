@@ -23,7 +23,10 @@ corto_string ws_serializer_escape(char *str, size_t *length_out) {
     return result;
 }
 
-static corto_string ws_serializer_truncate(corto_string str) {
+static 
+corto_string ws_serializer_truncate(
+    corto_string str) 
+{
     str[WS_MAX_SUMMARY_STRING] = '\0';
     str[WS_MAX_SUMMARY_STRING - 1] = '.';
     str[WS_MAX_SUMMARY_STRING - 2] = '.';
@@ -31,7 +34,8 @@ static corto_string ws_serializer_truncate(corto_string str) {
     return str;
 }
 
-static corto_int16 ws_serializer_primitive(
+static 
+corto_int16 ws_serializer_primitive(
     corto_walk_opt* s,
     corto_value *info,
     void *userData)
@@ -197,7 +201,7 @@ static corto_walk_opt ws_serializer(void) {
     corto_walk_opt result;
 
     corto_walk_init(&result);
-    result.access = CORTO_PRIVATE;
+    result.access = CORTO_PRIVATE|CORTO_LOCAL;
     result.accessKind = CORTO_NOT;
     result.aliasAction = CORTO_WALK_ALIAS_IGNORE;
     result.optionalAction = CORTO_WALK_OPTIONAL_ALWAYS;

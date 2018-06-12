@@ -60,7 +60,7 @@ void ws_service_onSub(
     sub = corto_declare(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
     if (!sub) {
         msg = ws_subfail__create(NULL, NULL, corto_idof(sub), corto_lasterr());
-        corto_error("creation of subscriber failed: %s", corto_lasterr());
+        corto_error("creation of subscriber failed");
     } else {
         /* Query parameters */
         corto_set_str(&sub->super.query.from, clientMsg->parent);
@@ -77,8 +77,9 @@ void ws_service_onSub(
         /* Set if subscription requests summary data */
         sub->summary = clientMsg->summary;
         if (corto_define(sub)) {
+            corto_raise();
             msg = ws_subfail__create(NULL, NULL, corto_idof(sub), corto_lasterr());
-            corto_error("failed to create subscriber: %s", corto_lasterr());
+            corto_error("failed to create subscriber");
             corto_delete(sub);
             sub = NULL;
         } else {

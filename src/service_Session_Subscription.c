@@ -12,7 +12,7 @@ void ws_service_Session_Subscription_addEvent(
 int16_t ws_service_Session_Subscription_construct(
     ws_service_Session_Subscription this)
 {
-    corto_set_str(&corto_subscriber(this)->contentType, "binary/corto");
+    corto_set_str(&corto_subscriber(this)->format, "binary/corto");
     return corto_subscriber_construct(this);
 }
 
@@ -47,9 +47,9 @@ ws_dataType* ws_data_addMetadata(
 
 static
 int16_t ws_typeSerializer_member(
-    corto_walk_opt* s, 
-    corto_value *info, 
-    void *userData) 
+    corto_walk_opt* s,
+    corto_value *info,
+    void *userData)
 {
     ws_typeSerializer_t *data = userData;
     corto_type type = corto_value_typeof(info);
@@ -68,7 +68,7 @@ int16_t ws_typeSerializer_member(
     if (type->reference) {
         type = corto_object_o;
     }
-        
+
     ws_type_identifier(type, typeId);
 
     corto_string escaped = ws_serializer_escape(typeId, NULL);
@@ -147,9 +147,9 @@ int16_t ws_typeSerializer_member(
 }
 
 int16_t ws_typeSerializer_constant(
-    corto_walk_opt* s, 
-    corto_value *info, 
-    void *userData) 
+    corto_walk_opt* s,
+    corto_value *info,
+    void *userData)
 {
     ws_typeSerializer_t *data = userData;
     corto_constant *c = info->is.constant.constant;
@@ -163,18 +163,18 @@ int16_t ws_typeSerializer_constant(
 }
 
 int16_t ws_typeSerializer_element(
-    corto_walk_opt* s, 
-    corto_value *info, 
-    void *userData) 
+    corto_walk_opt* s,
+    corto_value *info,
+    void *userData)
 {
     ws_typeSerializer_t *data = userData;
     corto_collection type = corto_collection(corto_value_typeof(info));
-    data->dataType->elementType = corto_calloc(sizeof(char*));
+    data->dataType->element_type = corto_calloc(sizeof(char*));
     {
-            corto_id elementTypeId;
-            corto_set_str(data->dataType->elementType, corto_fullpath(elementTypeId, type->elementType));
+            corto_id element_typeId;
+            corto_set_str(data->dataType->element_type, corto_fullpath(element_typeId, type->element_type));
     }
-    ws_data_addMetadata(data->session, data->msg, type->elementType);
+    ws_data_addMetadata(data->session, data->msg, type->element_type);
     return 0;
 }
 
@@ -194,10 +194,10 @@ static corto_walk_opt ws_typeSerializer(void) {
     return result;
 }
 
-static 
+static
 ws_dataType* ws_data_findDataType(
-    ws_data *data, 
-    corto_type type) 
+    ws_data *data,
+    corto_type type)
 {
     if (corto_ll_count(data->data)) {
         corto_id typeId;
@@ -319,7 +319,7 @@ void ws_service_Session_Subscription_processEvents(
             if (e->data.owner) {
                 corto_id ownerId;
                 if (corto_instanceof(corto_mount_o, e->data.owner)) {
-                    if (corto_mount(e->data.owner)->policy.ownership == CORTO_REMOTE_SOURCE) {
+                    if (corto_mount(e->data.owner)->ownership == CORTO_REMOTE_SOURCE) {
                         corto_string__set(dataObject->s, corto_fullpath(ownerId, e->data.owner));
                     }
                 }

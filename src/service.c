@@ -128,6 +128,7 @@ void ws_service_onUpdate(
 {
     if (corto_publish(
         CORTO_UPDATE,
+        NULL,
         updateMsg->id,
         NULL,
         "text/json",
@@ -147,6 +148,7 @@ void ws_service_on_delete(
 {
     if (corto_publish(
         CORTO_DELETE,
+        NULL,
         deleteMsg->id,
         NULL,
         NULL,

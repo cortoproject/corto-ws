@@ -23,9 +23,9 @@ corto_string ws_serializer_escape(char *str, size_t *length_out) {
     return result;
 }
 
-static 
+static
 corto_string ws_serializer_truncate(
-    corto_string str) 
+    corto_string str)
 {
     str[WS_MAX_SUMMARY_STRING] = '\0';
     str[WS_MAX_SUMMARY_STRING - 1] = '.';
@@ -34,7 +34,7 @@ corto_string ws_serializer_truncate(
     return str;
 }
 
-static 
+static
 corto_int16 ws_serializer_primitive(
     corto_walk_opt* s,
     corto_value *info,
@@ -59,6 +59,13 @@ corto_int16 ws_serializer_primitive(
 
     if (data->count) {
         corto_buffer_appendstr(data->buff, ",");
+    }
+
+    data->count ++;
+
+    if (!ptr) {
+        corto_buffer_appendstr(data->buff, "null");
+        return 0;
     }
 
     switch(t->kind) {
@@ -124,7 +131,6 @@ corto_int16 ws_serializer_primitive(
         break;
     }
 
-    data->count ++;
     data->valueCount ++;
 
     return 0;
@@ -180,10 +186,13 @@ static corto_int16 ws_serializer_object(
                 goto error;
             }
         } else {
-            unsigned int count = corto_ptr_count(corto_value_ptrof(info), t);
-            corto_buffer_append(data->buff, "%u", count);
-            if (count) {
-                privateData.valueCount = 1;
+            void *ptr = corto_value_ptrof(info);
+            if (ptr) {
+                unsigned int count = corto_ptr_count(ptr, t);
+                corto_buffer_append(data->buff, "%u", count);
+                if (count) {
+                    privateData.valueCount = 1;
+                }
             }
         }
     }

@@ -1,12 +1,12 @@
 /* This is a managed file. Do not delete this comment. */
 
-#include <corto/ws/ws.h>
+#include <corto.ws>
 
 void ws_service_Session_Subscription_addEvent(
     ws_service_Session_Subscription this,
     corto_event *e)
 {
-    corto_ll_append(this->batch, e);
+    ut_ll_append(this->batch, e);
 }
 
 int16_t ws_service_Session_Subscription_construct(
@@ -35,7 +35,7 @@ typedef struct ws_typeSerializer_t {
     ws_service_Session session;
     ws_data *msg;
     ws_dataType *dataType;
-    corto_buffer memberBuff;
+    ut_strbuf memberBuff;
     corto_int32 count;
 } ws_typeSerializer_t;
 
@@ -59,9 +59,9 @@ int16_t ws_typeSerializer_member(
     }
 
     if (data->count) {
-        corto_buffer_appendstr(&data->memberBuff, ",");
+        ut_strbuf_appendstr(&data->memberBuff, ",");
     } else {
-        corto_buffer_appendstr(&data->memberBuff, "[");
+        ut_strbuf_appendstr(&data->memberBuff, "[");
     }
 
     corto_id typeId;
@@ -72,7 +72,7 @@ int16_t ws_typeSerializer_member(
     ws_type_identifier(type, typeId);
 
     corto_string escaped = ws_serializer_escape(typeId, NULL);
-    corto_buffer_append(
+    ut_strbuf_append(
         &data->memberBuff,
         "[\"%s\",\"%s\"",
         m ? corto_idof(m) : "super",
@@ -85,57 +85,57 @@ int16_t ws_typeSerializer_member(
             : false
             ;
 
-    if (m && (add_modifiers || corto_ll_count(m->tags) || m->unit)) {
+    if (m && (add_modifiers || ut_ll_count(m->tags) || m->unit)) {
         bool first = true;
-        corto_buffer_appendstr(&data->memberBuff, ",{");
+        ut_strbuf_appendstr(&data->memberBuff, ",{");
         if (add_modifiers) {
-            corto_buffer_appendstr(&data->memberBuff, "\"m\":\"");
+            ut_strbuf_appendstr(&data->memberBuff, "\"m\":\"");
             if ((m->modifiers & CORTO_READONLY) == CORTO_READONLY) {
-                corto_buffer_appendstr(&data->memberBuff, "r");
+                ut_strbuf_appendstr(&data->memberBuff, "r");
             }
             if ((m->modifiers & CORTO_CONST) == CORTO_CONST) {
-                corto_buffer_appendstr(&data->memberBuff, "c");
+                ut_strbuf_appendstr(&data->memberBuff, "c");
             }
             if ((m->modifiers & CORTO_KEY) == CORTO_KEY) {
-                corto_buffer_appendstr(&data->memberBuff, "k");
+                ut_strbuf_appendstr(&data->memberBuff, "k");
             }
             if ((m->modifiers & CORTO_OPTIONAL) == CORTO_OPTIONAL) {
-                corto_buffer_appendstr(&data->memberBuff, "o");
+                ut_strbuf_appendstr(&data->memberBuff, "o");
             }
-            corto_buffer_appendstr(&data->memberBuff, "\"");
+            ut_strbuf_appendstr(&data->memberBuff, "\"");
             first = false;
         }
         if (m->unit) {
             if (!first) {
-                corto_buffer_appendstr(&data->memberBuff, ",");
+                ut_strbuf_appendstr(&data->memberBuff, ",");
             }
-            corto_buffer_append(
+            ut_strbuf_append(
                 &data->memberBuff,
                 "\"u\":[\"%s\",\"%s\",\"%s\"]",
                 corto_idof(m->unit->quantity),
                 corto_idof(m->unit),
                 m->unit->symbol);
         }
-        if (corto_ll_count(m->tags)) {
+        if (ut_ll_count(m->tags)) {
             if (!first) {
-                corto_buffer_appendstr(&data->memberBuff, ",");
+                ut_strbuf_appendstr(&data->memberBuff, ",");
             }
-            corto_buffer_appendstr(&data->memberBuff, "\"t\":[");
-            corto_iter it = corto_ll_iter(m->tags);
+            ut_strbuf_appendstr(&data->memberBuff, "\"t\":[");
+            ut_iter it = ut_ll_iter(m->tags);
             int count = 0;
-            while (corto_iter_hasNext(&it)) {
-                corto_tag t = corto_iter_next(&it);
+            while (ut_iter_hasNext(&it)) {
+                corto_tag t = ut_iter_next(&it);
                 if (count) {
-                    corto_buffer_appendstr(&data->memberBuff, ",");
+                    ut_strbuf_appendstr(&data->memberBuff, ",");
                 }
-                corto_buffer_append(&data->memberBuff, "\"%s\"",
+                ut_strbuf_append(&data->memberBuff, "\"%s\"",
                     corto_path(NULL, tags_o, t, "/"));
             }
-            corto_buffer_appendstr(&data->memberBuff, "]");
+            ut_strbuf_appendstr(&data->memberBuff, "]");
         }
-        corto_buffer_appendstr(&data->memberBuff, "}");
+        ut_strbuf_appendstr(&data->memberBuff, "}");
     }
-    corto_buffer_appendstr(&data->memberBuff, "]");
+    ut_strbuf_appendstr(&data->memberBuff, "]");
 
     corto_dealloc(escaped);
 
@@ -155,8 +155,8 @@ int16_t ws_typeSerializer_constant(
     corto_constant *c = info->is.constant.constant;
 
     if (!data->dataType->constants) {
-        data->dataType->constants = corto_alloc(sizeof(corto_ll));
-        *data->dataType->constants = corto_ll_new();
+        data->dataType->constants = corto_alloc(sizeof(ut_ll));
+        *data->dataType->constants = ut_ll_new();
     }
     corto_stringList__append(*data->dataType->constants, corto_idof(c));
     return 0;
@@ -199,12 +199,12 @@ ws_dataType* ws_data_findDataType(
     ws_data *data,
     corto_type type)
 {
-    if (corto_ll_count(data->data)) {
+    if (ut_ll_count(data->data)) {
         corto_id typeId;
         ws_type_identifier(type, typeId);
-        corto_iter it = corto_ll_iter(data->data);
-        while (corto_iter_hasNext(&it)) {
-            ws_dataType *dataType = corto_iter_next(&it);
+        ut_iter it = ut_ll_iter(data->data);
+        while (ut_iter_hasNext(&it)) {
+            ws_dataType *dataType = ut_iter_next(&it);
             if (!strcmp(dataType->type, typeId)) {
                 return dataType;
             }
@@ -230,19 +230,19 @@ ws_dataType* ws_data_addMetadata(
         appendType = true;
     }
 
-    if (!corto_ll_hasObject(session->typesAligned, t)) {
+    if (!ut_ll_hasObject(session->typesAligned, t)) {
         corto_type kind = corto_typeof(t);
         corto_string__set(dataType->kind, corto_fullpath(NULL, kind));
 
         /* Don't treat range types as composites */
         if (kind != (corto_type)corto_range_o) {
             corto_walk_opt s = ws_typeSerializer();
-            ws_typeSerializer_t walkData = {session, msg, dataType, CORTO_BUFFER_INIT, 0};
-            corto_ll_insert(session->typesAligned, t);
+            ws_typeSerializer_t walkData = {session, msg, dataType, UT_STRBUF_INIT, 0};
+            ut_ll_insert(session->typesAligned, t);
             corto_metawalk(&s, t, &walkData);
             if (walkData.count) {
-                corto_buffer_appendstr(&walkData.memberBuff, "]");
-                corto_string members = corto_buffer_str(&walkData.memberBuff);
+                ut_strbuf_appendstr(&walkData.memberBuff, "]");
+                corto_string members = ut_strbuf_get(&walkData.memberBuff);
                 corto_string__set(dataType->members, members);
                 corto_dealloc(members);
             }
@@ -253,7 +253,7 @@ ws_dataType* ws_data_addMetadata(
     }
 
     if (appendType) {
-        corto_ll_append(msg->data, dataType);
+        ut_ll_append(msg->data, dataType);
     }
 
     return dataType;
@@ -264,8 +264,8 @@ void ws_service_Session_Subscription_processEvents(
 {
     ws_service_Session session = corto_parentof(corto_parentof(this));
 
-    corto_debug("ws: prepare %d events for '%s' [%p]",
-        corto_ll_count(this->batch),
+    ut_debug("ws: prepare %d events for '%s' [%p]",
+        ut_ll_count(this->batch),
         corto_fullpath(NULL, this), this);
 
     ws_data *msg = corto_declare(NULL, NULL, ws_data_o);
@@ -273,18 +273,18 @@ void ws_service_Session_Subscription_processEvents(
 
     corto_subscriber_event *e;
 
-    while ((e = corto_ll_takeFirst(this->batch))) {
+    while ((e = ut_ll_takeFirst(this->batch))) {
         ws_dataObject *dataObject = NULL;
         void *data = (void*)e->data.value;
 
         corto_type t = corto_resolve(NULL, e->data.type);
         if (!t) {
-            corto_error("unresolved type '%s' for object '%s/%s'", e->data.type, e->data.parent, e->data.id);
+            ut_error("unresolved type '%s' for object '%s/%s'", e->data.type, e->data.parent, e->data.id);
             goto error;
         }
 
         if (!corto_instanceof(corto_type_o, t)) {
-            corto_error("object '%s' resolved by '%s' as type for '%s/%s' is not a type",
+            ut_error("object '%s' resolved by '%s' as type for '%s/%s' is not a type",
                 corto_fullpath(NULL, t),
                 e->data.type,
                 e->data.parent,
@@ -297,14 +297,14 @@ void ws_service_Session_Subscription_processEvents(
         corto_eventMask mask = e->event;
         if (mask & (CORTO_UPDATE|CORTO_DEFINE)) {
             if (!dataType->set) {
-                dataType->set = corto_alloc(sizeof(corto_ll));
-                *dataType->set = corto_ll_new();
+                dataType->set = corto_alloc(sizeof(ut_ll));
+                *dataType->set = ut_ll_new();
             }
             dataObject = ws_dataObjectList__append_alloc(*dataType->set);
         } else if (mask & CORTO_DELETE) {
             if (!dataType->del) {
-                dataType->del = corto_alloc(sizeof(corto_ll));
-                *dataType->del = corto_ll_new();
+                dataType->del = corto_alloc(sizeof(ut_ll));
+                *dataType->del = ut_ll_new();
             }
             dataObject = ws_dataObjectList__append_alloc(*dataType->del);
         }
@@ -352,7 +352,7 @@ void ws_service_Session_Subscription_processEvents(
             }
         }
 
-        corto_assert(corto_release(e) == 0, "event is leaking");
+        ut_assert(corto_release(e) == 0, "event is leaking");
 
         corto_release(t);
     }

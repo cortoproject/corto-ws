@@ -1,5 +1,5 @@
 {
-    "id": "corto/ws",
+    "id": "corto.ws",
     "type": "package",
     "value": {
         "author": "Sander Mertens",
@@ -10,10 +10,10 @@
         "version": "1.0.0",
         "use": [
             "base64",
-            "corto/ws/c",
-            "corto/httpserver",
-            "corto/range",
+            "corto.httpserver",
+            "corto.range",
             "tags"
         ]
-    }
+    },
+    "corto": { }
 }

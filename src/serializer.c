@@ -1,12 +1,12 @@
 
-#include <corto/ws/ws.h>
+#include <corto.ws>
 
 #define WS_MAX_SUMMARY_STRING (40)
 
 typedef struct ws_serializer_t {
     int count;
     int valueCount;
-    corto_buffer *buff;
+    ut_strbuf *buff;
     bool summary;
 } ws_serializer_t;
 
@@ -58,22 +58,22 @@ corto_int16 ws_serializer_primitive(
     }
 
     if (data->count) {
-        corto_buffer_appendstr(data->buff, ",");
+        ut_strbuf_appendstr(data->buff, ",");
     }
 
     data->count ++;
 
     if (!ptr) {
-        corto_buffer_appendstr(data->buff, "null");
+        ut_strbuf_appendstr(data->buff, "null");
         return 0;
     }
 
     switch(t->kind) {
     case CORTO_BOOLEAN:
         if (*(bool*)ptr) {
-            corto_buffer_appendstr(data->buff, "true");
+            ut_strbuf_appendstr(data->buff, "true");
         } else {
-            corto_buffer_appendstr(data->buff, "false");
+            ut_strbuf_appendstr(data->buff, "false");
         }
         break;
     case CORTO_UINTEGER:
@@ -85,29 +85,29 @@ corto_int16 ws_serializer_primitive(
         if (!strcmp(str, "nan")) {
             corto_set_str(&str, "null");
         }
-        corto_buffer_appendstr_zerocpy(data->buff, str);
+        ut_strbuf_appendstr_zerocpy(data->buff, str);
         break;
     case CORTO_TEXT: {
         str = *(char**)ptr;
         size_t length = 0;
         if (!str) {
-            corto_buffer_appendstr(data->buff, "null");
+            ut_strbuf_appendstr(data->buff, "null");
         } else {
             str = ws_serializer_escape(str, &length);
             if (data->summary && length > WS_MAX_SUMMARY_STRING) {
                 str = ws_serializer_truncate(str);
             }
-            corto_buffer_appendstr(data->buff, "\"");
-            corto_buffer_appendstr_zerocpy(data->buff, str);
-            corto_buffer_appendstr(data->buff, "\"");
+            ut_strbuf_appendstr(data->buff, "\"");
+            ut_strbuf_appendstr_zerocpy(data->buff, str);
+            ut_strbuf_appendstr(data->buff, "\"");
         }
         break;
     }
     case CORTO_ENUM: {
         corto_constant *c = corto_enum_constant_from_value(t, *(int32_t*)ptr);
-        corto_buffer_appendstr(data->buff, "\"");
-        corto_buffer_appendstr(data->buff, corto_idof(c));
-        corto_buffer_appendstr(data->buff, "\"");
+        ut_strbuf_appendstr(data->buff, "\"");
+        ut_strbuf_appendstr(data->buff, corto_idof(c));
+        ut_strbuf_appendstr(data->buff, "\"");
         break;
     }
     case CORTO_BITMASK:
@@ -115,17 +115,17 @@ corto_int16 ws_serializer_primitive(
             if (corto_ptr_cast(t, ptr, corto_string_o, &str)) {
                 goto error;
             }
-            corto_buffer_appendstr(data->buff, "\"");
-            corto_buffer_appendstr_zerocpy(data->buff, str);
-            corto_buffer_appendstr(data->buff, "\"");
+            ut_strbuf_appendstr(data->buff, "\"");
+            ut_strbuf_appendstr_zerocpy(data->buff, str);
+            ut_strbuf_appendstr(data->buff, "\"");
         } else {
-            corto_buffer_appendstr(data->buff, "0");
+            ut_strbuf_appendstr(data->buff, "0");
         }
         break;
     case CORTO_CHARACTER:
-        corto_buffer_appendstr(data->buff, "\"");
-        corto_buffer_appendstrn(data->buff, ptr, 1);
-        corto_buffer_appendstr(data->buff, "\"");
+        ut_strbuf_appendstr(data->buff, "\"");
+        ut_strbuf_appendstrn(data->buff, ptr, 1);
+        ut_strbuf_appendstr(data->buff, "\"");
         break;
     default:
         break;
@@ -149,9 +149,9 @@ static corto_int16 ws_serializer_reference(
     corto_fullpath(id, o);
     char *str = ws_serializer_escape(id, NULL);
     if (data->count) {
-        corto_buffer_appendstr(data->buff, ",");
+        ut_strbuf_appendstr(data->buff, ",");
     }
-    corto_buffer_append(data->buff, "\"%s\"", str);
+    ut_strbuf_append(data->buff, "\"%s\"", str);
     corto_dealloc(str);
     data->count ++;
     data->valueCount ++;
@@ -173,8 +173,8 @@ static corto_int16 ws_serializer_object(
     };
     corto_type t = corto_value_typeof(info);
 
-    if (data->count) corto_buffer_appendstr(data->buff, ",");
-    corto_buffer_appendstr(data->buff, "[");
+    if (data->count) ut_strbuf_appendstr(data->buff, ",");
+    ut_strbuf_appendstr(data->buff, "[");
 
     if (t->kind == CORTO_COMPOSITE) {
         if (corto_walk_members(s, info, &privateData)) {
@@ -189,7 +189,7 @@ static corto_int16 ws_serializer_object(
             void *ptr = corto_value_ptrof(info);
             if (ptr) {
                 unsigned int count = corto_ptr_count(ptr, t);
-                corto_buffer_append(data->buff, "%u", count);
+                ut_strbuf_append(data->buff, "%u", count);
                 if (count) {
                     privateData.valueCount = 1;
                 }
@@ -199,7 +199,7 @@ static corto_int16 ws_serializer_object(
 
     data->count ++;
     data->valueCount += privateData.valueCount;
-    corto_buffer_appendstr(data->buff, "]");
+    ut_strbuf_appendstr(data->buff, "]");
 
     return 0;
 error:
@@ -225,7 +225,7 @@ static corto_walk_opt ws_serializer(void) {
 
 corto_string ws_serializer_serialize(corto_value *v, bool summary) {
     corto_string result = NULL;
-    corto_buffer buff = CORTO_BUFFER_INIT;
+    ut_strbuf buff = UT_STRBUF_INIT;
     ws_serializer_t walkData = {0, 0, &buff, summary};
     corto_walk_opt s = ws_serializer();
 
@@ -233,7 +233,7 @@ corto_string ws_serializer_serialize(corto_value *v, bool summary) {
         goto error;
     }
 
-    result = corto_buffer_str(&buff);
+    result = ut_strbuf_get(&buff);
 
     if (!walkData.valueCount) {
         corto_dealloc(result);

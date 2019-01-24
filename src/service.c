@@ -1,6 +1,7 @@
 /* This is a managed file. Do not delete this comment. */
 
-#include <corto/ws/ws.h>
+#include <corto.ws>
+
 #define corto_lookupAssert(p, i, t) \
     corto(CORTO_LOOKUP|CORTO_ASSERT_SUCCESS|CORTO_FORCE_TYPE, {.parent = p, .id = i, .type = t})
 
@@ -16,19 +17,19 @@ void ws_service_onConnect(
 
     if (clientMsg->version && strcmp(clientMsg->version, "1.0")) {
         msg = ws_failed__create(NULL, NULL, "1.0");
-        corto_warning("connect: wrong version '%s'", clientMsg->version);
+        ut_warning("connect: wrong version '%s'", clientMsg->version);
     } else {
         if (!clientMsg->session || !(session = corto_lookup(sessions, clientMsg->session))) {
             char *sessionId = httpserver_random(17);
             session = ws_service_Session__create(sessions, sessionId);
             corto_set_ref(&session->conn, c);
             corto_set_ref(&c->ctx, session);
-            corto_trace("connect: established session '%s'", sessionId);
+            ut_trace("connect: established session '%s'", sessionId);
             corto_dealloc(sessionId);
         } else {
             corto_set_ref(&session->conn, c);
             corto_set_ref(&c->ctx, session);
-            corto_trace("connect: reestablished session '%s'", clientMsg->session);
+            ut_trace("connect: reestablished session '%s'", clientMsg->session);
             corto_release(session);
         }
 
@@ -59,8 +60,8 @@ void ws_service_onSub(
     /* Create new subscription */
     sub = corto_declare(subscriptions, clientMsg->id, ws_service_Session_Subscription_o);
     if (!sub) {
-        msg = ws_subfail__create(NULL, NULL, corto_idof(sub), corto_lasterr());
-        corto_error("creation of subscriber failed");
+        msg = ws_subfail__create(NULL, NULL, corto_idof(sub), ut_lasterr());
+        ut_error("creation of subscriber failed");
     } else {
         /* Query parameters */
         corto_set_str(&sub->super.query.from, clientMsg->parent);
@@ -77,14 +78,14 @@ void ws_service_onSub(
         /* Set if subscription requests summary data */
         sub->summary = clientMsg->summary;
         if (corto_define(sub)) {
-            corto_raise();
-            msg = ws_subfail__create(NULL, NULL, corto_idof(sub), corto_lasterr());
-            corto_error("failed to create subscriber");
+            ut_raise();
+            msg = ws_subfail__create(NULL, NULL, corto_idof(sub), ut_lasterr());
+            ut_error("failed to create subscriber");
             corto_delete(sub);
             sub = NULL;
         } else {
             msg = ws_subok__create(NULL, NULL, corto_idof(sub));
-            corto_trace("sub: subscriber '%s' listening to '%s', '%s'",
+            ut_trace("sub: subscriber '%s' listening to '%s', '%s'",
                 clientMsg->id, clientMsg->parent, clientMsg->expr);
         }
 
@@ -95,7 +96,7 @@ void ws_service_onSub(
     if (sub) {
         /* Enable subscriber, aligns data */
         if (corto_subscriber_subscribe(sub, session)) {
-            corto_error("ws: failed to enable subscriber: %s", corto_lasterr());
+            ut_error("ws: failed to enable subscriber: %s", ut_lasterr());
         }
     }
 }
@@ -117,7 +118,7 @@ void ws_service_onUnsub(
         corto_release(sub);
     }
 
-    corto_trace("unsub: deleted subscriber '%s'", clientMsg->id);
+    ut_trace("unsub: deleted subscriber '%s'", clientMsg->id);
 }
 
 static
@@ -134,7 +135,7 @@ void ws_service_onUpdate(
         "text/json",
         updateMsg->v ? *updateMsg->v : NULL
     )) {
-        corto_error("update: failed to update '%s'", updateMsg->id);
+        ut_error("update: failed to update '%s'", updateMsg->id);
     }
 
     return;
@@ -154,7 +155,7 @@ void ws_service_on_delete(
         NULL,
         0
     )) {
-        corto_error("delete: failed to delete '%s'", deleteMsg->id);
+        ut_error("delete: failed to delete '%s'", deleteMsg->id);
     }
 
     return;
@@ -165,45 +166,45 @@ void ws_service_flush(
     corto_subscriber sub)
 {
     corto_subscriber_event *e;
-    corto_ll subs = corto_ll_new(), to_remove = corto_ll_new();
+    ut_ll subs = ut_ll_new(), to_remove = ut_ll_new();
 
     /* Collect events */
     corto_lock(this);
-    corto_iter it = corto_rb_iter(this->events);
-    while (corto_iter_hasNext(&it)) {
-        e = corto_iter_next(&it);
+    ut_iter it = ut_rb_iter(this->events);
+    while (ut_iter_hasNext(&it)) {
+        e = ut_iter_next(&it);
 
         /* Only take events for specified subscriber */
         if (!sub || (sub == e->subscriber)) {
-            corto_ll_append(to_remove, e);
+            ut_ll_append(to_remove, e);
         }
     }
 
-    while ((e = corto_ll_takeFirst(to_remove))) {
-        corto_rb_remove(this->events, e);
+    while ((e = ut_ll_takeFirst(to_remove))) {
+        ut_rb_remove(this->events, e);
 
         /* It is possible that the session has already been deleted */
         if (!corto_check_state(e->instance, CORTO_DELETED)) {
             safe_ws_service_Session_Subscription_addEvent(e->subscriber, (corto_event*)e);
-            if (!corto_ll_hasObject(subs, e->subscriber)) {
-                corto_ll_insert(subs, e->subscriber);
+            if (!ut_ll_hasObject(subs, e->subscriber)) {
+                ut_ll_insert(subs, e->subscriber);
             }
 
         } else {
-            corto_assert(corto_release(e) == 0, "event is leaking");
+            ut_assert(corto_release(e) == 0, "event is leaking");
         }
     }
-    corto_ll_free(to_remove);
+    ut_ll_free(to_remove);
     corto_unlock(this);
 
     /* Process events outside of lock */
-    it = corto_ll_iter(subs);
-    while (corto_iter_hasNext(&it)) {
-        ws_service_Session_Subscription sub = corto_iter_next(&it);
+    it = ut_ll_iter(subs);
+    while (ut_iter_hasNext(&it)) {
+        ws_service_Session_Subscription sub = ut_iter_next(&it);
         ws_service_Session_Subscription_processEvents(sub);
     }
 
-    corto_ll_free(subs);
+    ut_ll_free(subs);
 }
 
 void ws_service_on_close(
@@ -211,7 +212,7 @@ void ws_service_on_close(
     corto_httpserver_HTTP_Connection c)
 {
     if (c->ctx) {
-        corto_trace("close: disconnected session '%s'", corto_idof(c->ctx));
+        ut_trace("close: disconnected session '%s'", corto_idof(c->ctx));
         corto_delete(c->ctx);
         corto_set_ref(&c->ctx, NULL);
     }
@@ -222,11 +223,11 @@ void ws_service_on_message(
     corto_httpserver_HTTP_Connection c,
     const char *msg)
 {
-    corto_log_push("ws");
+    ut_log_push("ws");
 
     corto_object o = NULL;
     if (corto_deserialize(&o, "text/json", msg)) {
-        corto_throw("malformed message: %s", msg);
+        ut_throw("malformed message: %s", msg);
         goto error;
     }
 
@@ -239,12 +240,12 @@ void ws_service_on_message(
     else if (msgType == ws_delete_o) ws_service_on_delete(this, c, ws_delete(o));
     else goto error_type;
     corto_delete(o);
-    corto_log_pop();
+    ut_log_pop();
     return;
 error_type:
-    corto_error("received invalid message type: '%s'", corto_fullpath(NULL, corto_typeof(o)));
+    ut_error("received invalid message type: '%s'", corto_fullpath(NULL, corto_typeof(o)));
 error:
-    corto_log_pop();
+    ut_log_pop();
     return;
 }
 
@@ -279,19 +280,19 @@ void ws_service_post(
     }
 
     void *key = e;
-    void *data = corto_rb_findOrSetPtr(this->events, &key);
+    void *data = ut_rb_findOrSetPtr(this->events, &key);
     if (*(void**)data) {
         corto_release(*(void**)data);
         *(void**)key = e;
     }
     *(void**)data = e;
 
-    size = corto_rb_count(this->events);
+    size = ut_rb_count(this->events);
     corto_unlock(this);
 
     /* If queue is getting big, slow down publisher */
     if (size > WS_QUEUE_THRESHOLD) {
-        corto_sleep(0, WS_QUEUE_THRESHOLD_SLEEP);
+        ut_sleep(0, WS_QUEUE_THRESHOLD_SLEEP);
     }
 }
 
@@ -299,27 +300,27 @@ void ws_service_purge(
     ws_service this,
     corto_subscriber sub)
 {
-    corto_ll to_remove = corto_ll_new();
+    ut_ll to_remove = ut_ll_new();
 
     /* Purge events for specified subscriber */
     corto_lock(this);
-    corto_iter it = corto_rb_iter(this->events);
-    while (corto_iter_hasNext(&it)) {
-        corto_subscriber_event *e = corto_iter_next(&it);
+    ut_iter it = ut_rb_iter(this->events);
+    while (ut_iter_hasNext(&it)) {
+        corto_subscriber_event *e = ut_iter_next(&it);
         if (e->subscriber == sub) {
-            corto_ll_append(to_remove, e);
+            ut_ll_append(to_remove, e);
         }
     }
 
-    it = corto_ll_iter(to_remove);
-    while (corto_iter_hasNext(&it)) {
-        corto_subscriber_event *e = corto_iter_next(&it);
-        corto_rb_remove(this->events, e);
+    it = ut_ll_iter(to_remove);
+    while (ut_iter_hasNext(&it)) {
+        corto_subscriber_event *e = ut_iter_next(&it);
+        ut_rb_remove(this->events, e);
         corto_release(e);
     }
     corto_unlock(this);
 
-    corto_ll_free(to_remove);
+    ut_ll_free(to_remove);
 }
 
 static
@@ -344,6 +345,6 @@ int16_t ws_service_init(
     ws_service this)
 {
     /* Initialize events tree with custom compare function */
-    this->events = corto_rb_new(ws_service_findEvent, NULL);
+    this->events = ut_rb_new(ws_service_findEvent, NULL);
     return 0;
 }

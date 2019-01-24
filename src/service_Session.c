@@ -1,6 +1,7 @@
 /* This is a managed file. Do not delete this comment. */
 
-#include <corto/ws/ws.h>
+#include <corto.ws>
+
 void ws_service_Session_send(
     ws_service_Session this,
     corto_object msg)

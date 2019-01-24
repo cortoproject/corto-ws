@@ -1,6 +1,6 @@
 /* This is a managed file. Do not delete this comment. */
 
-#include <corto/ws/ws.h>
+#include <corto.ws>
 
 int cortomain(int argc, char *argv[]) {
 

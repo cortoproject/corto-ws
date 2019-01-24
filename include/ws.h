@@ -6,26 +6,20 @@
 #ifndef CORTO_WS_H
 #define CORTO_WS_H
 
-#include <corto/corto.h>
-#include <corto/ws/_project.h>
-#include <tags/c/c.h>
-#include <corto/range/c/c.h>
-#include <corto/httpserver/c/c.h>
-#include <corto/c/c.h>
-#include <tags/tags.h>
-#include <corto/range/range.h>
-#include <corto/httpserver/httpserver.h>
-#include <base64/base64.h>
+#include "bake_config.h"
+
+#define CORTO_WS_ETC ut_locate("corto.ws", NULL, UT_LOCATE_ETC)
 
 /* $header() */
 /* Enter additional code here. */
 /* $end */
 
-#include <corto/ws/_type.h>
-#include <corto/ws/_interface.h>
-#include <corto/ws/_load.h>
-#include <corto/ws/_binding.h>
-#include <corto/ws/c/_api.h>
+#include "_type.h"
+#include "_interface.h"
+#include "_load.h"
+#include "_binding.h"
+
+#include <corto.ws.c>
 
 /* $body() */
 corto_string ws_serializer_serialize(corto_value *v, bool summary);
